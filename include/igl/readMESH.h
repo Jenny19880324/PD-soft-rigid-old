@@ -69,6 +69,43 @@ namespace igl
     Eigen::PlainObjectBase<DerivedV>& V,
     Eigen::PlainObjectBase<DerivedT>& T,
     Eigen::PlainObjectBase<DerivedF>& F);
+
+
+	// Input:
+	// mesh_file_name path of .mesh file
+	// Outputs:
+	// V eigen double matrix #V by 3
+	// T eigen int matrix #T by 5, extra element is the regional attribute
+	template <typename DerivedV, typename DerivedT>
+	IGL_INLINE bool readMESH(
+		const std::string mesh_file_name,
+		Eigen::PlainObjectBase<DerivedV>& V,
+		Eigen::PlainObjectBase<DerivedT>& T);
+	// Inputs:
+	// mesh_file pointer to already opened .mesh file
+	// Outputs:
+	// mesh_file closed file
+	template <typename DerivedV, typename DerivedT>
+	IGL_INLINE bool readMESH(
+		FILE * mesh_file,
+		Eigen::PlainObjectBase<DerivedV>& V,
+		Eigen::PlainObjectBase<DerivedT>& T);
+
+
+	// Input:
+	// mesh_file_name path of .mesh file
+	// Outputs:
+	// V eigen double matrix #T by 12
+	// T eigen int matrix #T by 5, the last entry is the region attribute of the tet
+	// F eigen int matrix #F by 3, this includes all the triangles, not only triangles on the surface.
+    // C eigen double matrix #F by 4, the color to identify each face
+  template <typename DerivedV, typename DerivedF, typename DerivedT, typename DerivedC>
+  IGL_INLINE bool convertMESH(
+	  const Eigen::PlainObjectBase<DerivedV>& V,
+	  const Eigen::PlainObjectBase<DerivedT>& T,
+	  Eigen::PlainObjectBase<DerivedV>& tV,
+	  Eigen::PlainObjectBase<DerivedF>& tF,
+	  Eigen::PlainObjectBase<DerivedC>& tC);
 }
 
 #ifndef IGL_STATIC_LIBRARY
