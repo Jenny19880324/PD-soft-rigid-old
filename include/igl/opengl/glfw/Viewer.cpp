@@ -291,6 +291,25 @@ namespace glfw
     window = nullptr;
     data_list.front().id = 0;
 
+	// slice plane
+	Eigen::MatrixXd slice_plane_vertices;
+	Eigen::MatrixXi slice_plane_faces;
+	Eigen::MatrixXd slice_plane_colors;
+	slice_plane_vertices.resize(4, 3);
+	slice_plane_vertices <<
+		-10., 10., 0.,
+		10., 10., 0.,
+		10., -10., 0.,
+		-10., -10., 0.;
+
+	slice_plane_faces.resize(2, 3);
+	slice_plane_faces << 0, 1, 2, 0, 2, 3;
+	slice_plane_colors.resize(2, 4);
+	slice_plane_colors << 1., 1., 1., 0.5, 1., 1., 1., 0.5;
+
+	slice_plane.set_mesh(slice_plane_vertices, slice_plane_faces);
+	slice_plane.set_colors(slice_plane_colors);
+
     // Temporary variables initialization
     down = false;
     hack_never_moved = true;
@@ -839,6 +858,9 @@ namespace glfw
     {
       core.draw(data_list[i]);
     }
+	if (slice_enabled) {
+		core.draw(slice_plane);
+	}
     if (callback_post_draw)
     {
       if (callback_post_draw(*this))

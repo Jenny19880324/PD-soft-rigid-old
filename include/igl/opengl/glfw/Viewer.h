@@ -45,6 +45,7 @@ namespace glfw
     // UI Enumerations
     enum class MouseButton {Left, Middle, Right};
     enum class MouseMode { None, Rotation, Zoom, Pan, Translation} mouse_mode;
+	enum SlicePlaneOrientation {x = 0, y, z};
     IGL_INLINE int launch(bool resizable = true,bool fullscreen = false);
     IGL_INLINE int launch_init(bool resizable = true,bool fullscreen = false);
     IGL_INLINE bool launch_rendering(bool loop = true);
@@ -118,6 +119,8 @@ namespace glfw
     // Stores all the data that should be visualized
     std::vector<ViewerData> data_list;
 
+	ViewerData slice_plane;
+
     size_t selected_data_index;
     int next_data_id;
     GLFWwindow* window;
@@ -135,6 +138,7 @@ namespace glfw
     Eigen::Vector3f down_translation;
     bool down;
     bool hack_never_moved;
+	bool slice_enabled = false;
     // Keep track of the global position of the scrollwheel
     float scroll_position;
     // C++-style functions
