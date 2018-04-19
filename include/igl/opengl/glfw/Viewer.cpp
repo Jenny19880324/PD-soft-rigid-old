@@ -297,10 +297,10 @@ namespace glfw
 	Eigen::MatrixXd slice_plane_colors;
 	slice_plane_vertices.resize(4, 3);
 	slice_plane_vertices <<
-		-10., 10., 0.,
-		10., 10., 0.,
-		10., -10., 0.,
-		-10., -10., 0.;
+		-2., 2., 0.,
+		2., 2., 0.,
+		2., -2., 0.,
+		-2., -2., 0.;
 
 	slice_plane_faces.resize(2, 3);
 	slice_plane_faces << 0, 1, 2, 0, 2, 3;
