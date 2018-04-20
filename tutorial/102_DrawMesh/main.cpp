@@ -163,10 +163,9 @@ bool mouse_move(igl::opengl::glfw::Viewer& viewer, int mouse_x, int mouse_y) {
 
 		viewer.slice_plane.set_vertices(slice_plane.vertices);
 		updateVisibleIndices(slice_plane, V, F, C, visible_F, visible_C);
-		viewer.erase_mesh(0);
+		viewer.data().clear();
 		viewer.data().set_mesh(V, visible_F);
 		viewer.data().set_colors(visible_C);
-		viewer.append_mesh();
 		return true;
 	}
 	return false;
@@ -199,19 +198,17 @@ int main(int argc, char *argv[])
 		  {
 			  viewer.slice_enabled = slice_plane.enabled;
 			  updateVisibleIndices(slice_plane, V, F, C, visible_F, visible_C);
-			  viewer.erase_mesh(0);
+			  viewer.data().clear();
 			  viewer.data().set_mesh(V, visible_F);
 			  viewer.data().set_colors(visible_C);
-			  viewer.append_mesh();
 		  }
 
 		  if (ImGui::Checkbox("active", &slice_plane.active))
 		  {
 			  updateVisibleIndices(slice_plane, V, F, C, visible_F, visible_C);
-			  viewer.erase_mesh(0);
+			  viewer.data().clear();
 			  viewer.data().set_mesh(V, visible_F);
 			  viewer.data().set_colors(visible_C);
-			  viewer.append_mesh();
 		  }
 
 		  static igl::opengl::glfw::Viewer::SlicePlaneOrientation dir = igl::opengl::glfw::Viewer::z;
@@ -259,10 +256,9 @@ int main(int argc, char *argv[])
 			  dist = 0.;
 			  viewer.slice_plane.set_vertices(slice_plane.vertices);
 			  updateVisibleIndices(slice_plane, V, F, C, visible_F, visible_C);
-			  viewer.erase_mesh(0);
+			  viewer.data().clear();
 			  viewer.data().set_mesh(V, visible_F);
 			  viewer.data().set_colors(visible_C);
-			  viewer.append_mesh();
 		  }
 		  
 
@@ -271,10 +267,9 @@ int main(int argc, char *argv[])
 			  slice_plane.vertices = slice_plane.stored_vertices + (slice_plane.normal.transpose() * (double)dist).replicate(4, 1);
 			  viewer.slice_plane.set_vertices(slice_plane.vertices);
 			  updateVisibleIndices(slice_plane, V, F, C, visible_F, visible_C);
-			  viewer.erase_mesh(0);
+			  viewer.data().clear();
 			  viewer.data().set_mesh(V, visible_F);
 			  viewer.data().set_colors(visible_C);
-			  viewer.append_mesh();
 		  }
 	  }
 	
@@ -312,7 +307,6 @@ int main(int argc, char *argv[])
   // Plot the mesh
   viewer.data().set_mesh(V, F);
   viewer.data().set_colors(C);
-  viewer.append_mesh();
   viewer.launch();
 }
 

@@ -749,7 +749,7 @@ IGL_INLINE bool igl::readMESH(
 			C.row(f_i) = color;
 		}
 		else {
-			const size_t colorIdx = 0;
+			const size_t colorIdx = 1;
 			Eigen::Vector4d color = colorScheme.row(colorIdx);
 			C.row(f_i) = color;
 		}
