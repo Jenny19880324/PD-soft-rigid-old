@@ -65,7 +65,33 @@ namespace igl
         > & shoot_ray,
     int & fid,
     Eigen::PlainObjectBase<Derivedbc> & bc);
+
+// Unproject a screen location (using current opengl viewport, projection, and
+// model view) to a 3D position _onto_ a given mesh, if the ray through the
+// given screen location (x,y) _hits_ the mesh.
+//
+// Inputs:
+//    pos        screen space coordinates
+//    model      model matrix
+//    proj       projection matrix
+//    viewport   vieweport vector
+//    V   #V by 3 list of mesh vertex positions
+//    F   #F by 3 list of mesh triangle indices into V
+// Outputs:
+//    vid  id of the first face hit
+// Returns true if there's a hit
+template < typename DerivedV, typename DerivedF>
+IGL_INLINE bool unproject_onto_mesh(
+	const Eigen::Vector2f& pos,
+	const Eigen::Matrix4f& model,
+	const Eigen::Matrix4f& proj,
+	const Eigen::Vector4f& viewport,
+	const Eigen::PlainObjectBase<DerivedV> & V,
+	const Eigen::PlainObjectBase<DerivedF> & F,
+	int & vid);
 }
+
+
 #ifndef IGL_STATIC_LIBRARY
 #  include "unproject_onto_mesh.cpp"
 #endif

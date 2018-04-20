@@ -70,9 +70,36 @@ IGL_INLINE bool igl::unproject_onto_mesh(
   return true;
 }
 
+
+template < typename DerivedV, typename DerivedF>
+IGL_INLINE bool igl::unproject_onto_mesh(
+	const Eigen::Vector2f& pos,
+	const Eigen::Matrix4f& model,
+	const Eigen::Matrix4f& proj,
+	const Eigen::Vector4f& viewport,
+	const Eigen::PlainObjectBase<DerivedV> & V,
+	const Eigen::PlainObjectBase<DerivedF> & F,
+	int & vid)
+{
+	Eigen::Vector3f bc;
+	int fid = -1;
+	unproject_onto_mesh(pos, model, proj, viewport, V, F, fid, bc);
+	if (fid == -1) {
+		return false;
+	}
+
+	int i = -1;
+	bc.maxCoeff(&i);
+	vid = F(fid, i);
+	return true;
+}
+
+
 #ifdef IGL_STATIC_LIBRARY
 // Explicit template instantiation
 template bool igl::unproject_onto_mesh<Eigen::Matrix<double, -1, -1, 0, -1, -1>, Eigen::Matrix<int, -1, -1, 0, -1, -1>, Eigen::Matrix<float, 3, 1, 0, 3, 1> >(Eigen::Matrix<float, 2, 1, 0, 2, 1> const&, Eigen::Matrix<float, 4, 4, 0, 4, 4> const&, Eigen::Matrix<float, 4, 4, 0, 4, 4> const&, Eigen::Matrix<float, 4, 1, 0, 4, 1> const&, Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> > const&, Eigen::PlainObjectBase<Eigen::Matrix<int, -1, -1, 0, -1, -1> > const&, int&, Eigen::PlainObjectBase<Eigen::Matrix<float, 3, 1, 0, 3, 1> >&);
 template bool igl::unproject_onto_mesh<Eigen::Matrix<double, -1, -1, 0, -1, -1>, Eigen::Matrix<int, -1, -1, 0, -1, -1>, Eigen::Matrix<double, -1, 1, 0, -1, 1> >(Eigen::Matrix<float, 2, 1, 0, 2, 1> const&, Eigen::Matrix<float, 4, 4, 0, 4, 4> const&, Eigen::Matrix<float, 4, 4, 0, 4, 4> const&, Eigen::Matrix<float, 4, 1, 0, 4, 1> const&, Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> > const&, Eigen::PlainObjectBase<Eigen::Matrix<int, -1, -1, 0, -1, -1> > const&, int&, Eigen::PlainObjectBase<Eigen::Matrix<double, -1, 1, 0, -1, 1> >&);
+
+template bool igl::unproject_onto_mesh<Eigen::Matrix<double, -1, -1, 0, -1, -1>, Eigen::Matrix<int, -1, -1, 0, -1, -1> >(Eigen::Matrix<float, 2, 1, 0, 2, 1> const &, Eigen::Matrix<float, 4, 4, 0, 4, 4> const &, Eigen::Matrix<float, 4, 4, 0, 4, 4> const &, Eigen::Matrix<float, 4, 1, 0, 4, 1> const &, Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> > const &, Eigen::PlainObjectBase<Eigen::Matrix<int, -1, -1, 0, -1, -1> > const &, int &);
 #endif
 

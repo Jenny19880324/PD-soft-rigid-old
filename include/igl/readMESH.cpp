@@ -6,6 +6,7 @@
 // v. 2.0. If a copy of the MPL was not distributed with this file, You can 
 // obtain one at http://mozilla.org/MPL/2.0/.
 #include "readMESH.h"
+#include <unordered_set>
 
 template <typename Scalar, typename Index>
 IGL_INLINE bool igl::readMESH(
@@ -486,11 +487,13 @@ IGL_INLINE bool igl::readMESH(
 //  return true;
 //}
 
-template <typename DerivedV, typename DerivedT>
+template <typename DerivedV, typename DerivedT, typename DerivedF, typename DerivedC>
 IGL_INLINE bool igl::readMESH(
 	const std::string mesh_file_name,
 	Eigen::PlainObjectBase<DerivedV>& V,
-	Eigen::PlainObjectBase<DerivedT>& T)
+	Eigen::PlainObjectBase<DerivedT>& T,
+	Eigen::PlainObjectBase<DerivedF>& F,
+	Eigen::PlainObjectBase<DerivedC>& C)
 {
 	using namespace std;
 	FILE * mesh_file = fopen(mesh_file_name.c_str(), "r");
@@ -499,15 +502,17 @@ IGL_INLINE bool igl::readMESH(
 		fprintf(stderr, "IOError: %s could not be opened...", mesh_file_name.c_str());
 		return false;
 	}
-	return readMESH(mesh_file, V, T);
+	return readMESH(mesh_file, V, T, F, C);
 }
 
 
-template <typename DerivedV, typename DerivedT>
+template <typename DerivedV, typename DerivedT, typename DerivedF, typename DerivedC>
 IGL_INLINE bool igl::readMESH(
 	FILE * mesh_file,
 	Eigen::PlainObjectBase<DerivedV>& V,
-	Eigen::PlainObjectBase<DerivedT>& T)
+	Eigen::PlainObjectBase<DerivedT>& T,
+	Eigen::PlainObjectBase<DerivedF>& F,
+	Eigen::PlainObjectBase<DerivedC>& C)
 {
 	using namespace std;
 #ifndef LINE_MAX
@@ -645,6 +650,7 @@ IGL_INLINE bool igl::readMESH(
 
 	// triangle indices
 	int tri[3];
+	F.resize(number_of_triangles, 3);
 	for (int i = 0; i<number_of_triangles; i++)
 	{
 		if (4 != fscanf(mesh_file, " %d %d %d %d", &tri[0], &tri[1], &tri[2], &extra))
@@ -652,6 +658,9 @@ IGL_INLINE bool igl::readMESH(
 			printf("Error: expecting triangle indices...\n");
 			return false;
 		}
+		F(i, 0) = tri[0] - 1;
+		F(i, 1) = tri[1] - 1;
+		F(i, 2) = tri[2] - 1;
 	}
 
 	// eat comments
@@ -681,6 +690,7 @@ IGL_INLINE bool igl::readMESH(
 	T.resize(number_of_tetrahedra, 5);
 	// tet indices
 	int a, b, c, d;
+	std::unordered_set<int> rigid_vertex_set;
 	for (int i = 0; i<number_of_tetrahedra; i++)
 	{
 		if (5 != fscanf(mesh_file, " %d %d %d %d %d", &a, &b, &c, &d, &extra))
@@ -694,58 +704,17 @@ IGL_INLINE bool igl::readMESH(
 		T(i, 2) = c - 1;
 		T(i, 3) = d - 1;
 		T(i, 4) = extra;
+
+		if (extra == 0) {
+			rigid_vertex_set.insert(T(i, 0));
+			rigid_vertex_set.insert(T(i, 1));
+			rigid_vertex_set.insert(T(i, 2));
+			rigid_vertex_set.insert(T(i, 3));
+		}
 	}
 	fclose(mesh_file);
-	return true;
-}
 
-
-
-template <typename DerivedV, typename DerivedF, typename DerivedT, typename DerivedC>
-IGL_INLINE bool igl::convertMESH(
-	const Eigen::PlainObjectBase<DerivedV>& V,
-	const Eigen::PlainObjectBase<DerivedT>& T,
-	Eigen::PlainObjectBase<DerivedV>& tV,
-	Eigen::PlainObjectBase<DerivedF>& tF,
-	Eigen::PlainObjectBase<DerivedC>& tC)
-{
-	tV.resize(T.rows() * 12, 3);
-	for (int i = 0; i < T.rows(); ++i) {
-		tV.row(12 * i + 0) = V.row(T(i, 0));
-		tV.row(12 * i + 1) = V.row(T(i, 2));
-		tV.row(12 * i + 2) = V.row(T(i, 1));
-
-		tV.row(12 * i + 3) = V.row(T(i, 1));
-		tV.row(12 * i + 4) = V.row(T(i, 2));
-		tV.row(12 * i + 5) = V.row(T(i, 3));
-
-		tV.row(12 * i + 6) = V.row(T(i, 2));
-		tV.row(12 * i + 7) = V.row(T(i, 0));
-		tV.row(12 * i + 8) = V.row(T(i, 3));
-
-		tV.row(12 * i + 9) = V.row(T(i, 3));
-		tV.row(12 * i + 10) = V.row(T(i, 0));
-		tV.row(12 * i + 11) = V.row(T(i, 1));
-	}
-
-	tF.resize(T.rows() * 4, 3);
-	for (int i = 0; i < T.rows(); ++i) {
-		tF(4 * i + 0, 0) = 12 * i + 0;
-		tF(4 * i + 0, 1) = 12 * i + 1;
-		tF(4 * i + 0, 2) = 12 * i + 2;
-
-		tF(4 * i + 1, 0) = 12 * i + 3;
-		tF(4 * i + 1, 1) = 12 * i + 4;
-		tF(4 * i + 1, 2) = 12 * i + 5;
-
-		tF(4 * i + 2, 0) = 12 * i + 6;
-		tF(4 * i + 2, 1) = 12 * i + 7;
-		tF(4 * i + 2, 2) = 12 * i + 8;
-
-		tF(4 * i + 3, 0) = 12 * i + 9;
-		tF(4 * i + 3, 1) = 12 * i + 10;
-		tF(4 * i + 3, 2) = 12 * i + 11;
-	}
+	// assign different colors to faces belong to rigid tets
 
 	// http://colorbrewer2.org
 	// 12 data classes
@@ -768,15 +737,22 @@ IGL_INLINE bool igl::convertMESH(
 		, 177, 89, 40, 255;
 
 	colorScheme /= 255.0f;
+	C.resize(F.rows(), 4);
+	for (int f_i = 0; f_i < number_of_triangles; ++f_i) {
+		bool is_rigid_face = rigid_vertex_set.find(F(f_i, 0)) != rigid_vertex_set.end() &&
+			rigid_vertex_set.find(F(f_i, 1)) != rigid_vertex_set.end() &&
+			rigid_vertex_set.find(F(f_i, 2)) != rigid_vertex_set.end();
 
-	tC.resize(tF.rows(), 4);
-	for (int i = 0; i < T.rows(); ++i) {
-		const size_t colorIdx = T(i, 4) % 12;
-		Eigen::Vector4d color = colorScheme.row(colorIdx);
-		tC.row(4 * i + 0) = color;
-		tC.row(4 * i + 1) = color;
-		tC.row(4 * i + 2) = color;
-		tC.row(4 * i + 3) = color;
+		if (is_rigid_face) {
+			const size_t colorIdx = 5;
+			Eigen::Vector4d color = colorScheme.row(colorIdx);
+			C.row(f_i) = color;
+		}
+		else {
+			const size_t colorIdx = 0;
+			Eigen::Vector4d color = colorScheme.row(colorIdx);
+			C.row(f_i) = color;
+		}
 	}
 	return true;
 }
@@ -798,7 +774,5 @@ template bool igl::readMESH<Eigen::Matrix<double, -1, 3, 0, -1, 3>, Eigen::Matri
 template bool igl::readMESH<Eigen::Matrix<double, -1, -1, 0, -1, -1>, Eigen::Matrix<int, -1, -1, 0, -1, -1>, Eigen::Matrix<int, -1, -1, 0, -1, -1> >(std::basic_string<char, std::char_traits<char>, std::allocator<char> >, Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> >&, Eigen::PlainObjectBase<Eigen::Matrix<int, -1, -1, 0, -1, -1> >&, Eigen::PlainObjectBase<Eigen::Matrix<int, -1, -1, 0, -1, -1> >&);
 template bool igl::readMESH<Eigen::Matrix<double, -1, -1, 0, -1, -1>, Eigen::Matrix<int, -1, -1, 0, -1, -1>, Eigen::Matrix<double, -1, -1, 0, -1, -1> >(std::basic_string<char, std::char_traits<char>, std::allocator<char> >, Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> >&, Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> >&, Eigen::PlainObjectBase<Eigen::Matrix<int, -1, -1, 0, -1, -1> >&);
 template bool igl::readMESH<double, int>(std::basic_string<char, std::char_traits<char>, std::allocator<char> >, std::vector<std::vector<double, std::allocator<double> >, std::allocator<std::vector<double, std::allocator<double> > > >&, std::vector<std::vector<int, std::allocator<int> >, std::allocator<std::vector<int, std::allocator<int> > > >&, std::vector<std::vector<int, std::allocator<int> >, std::allocator<std::vector<int, std::allocator<int> > > >&);
-template bool igl::readMESH<Eigen::Matrix<double, -1, 3, 1, -1, 3>, Eigen::Matrix<int, -1, 3, 1, -1, 3>, Eigen::Matrix<int, -1, -1, 0, -1, -1> >(std::basic_string<char, std::char_traits<char>, std::allocator<char> >, Eigen::PlainObjectBase<Eigen::Matrix<double, -1, 3, 1, -1, 3> >&, Eigen::PlainObjectBase<Eigen::Matrix<int, -1, -1, 0, -1, -1> >&, Eigen::PlainObjectBase<Eigen::Matrix<int, -1, 3, 1, -1, 3> >&);
-template bool igl::readMESH<Eigen::Matrix<double, -1, -1, 0, -1, -1>, Eigen::Matrix<int, -1, -1, 0, -1, -1> >(std::basic_string<char, std::char_traits<char>, std::allocator<char> >, Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> > &, Eigen::PlainObjectBase<Eigen::Matrix<int, -1, -1, 0, -1, -1> > &);
-template bool igl::convertMESH<Eigen::Matrix<double, -1, -1, 0, -1, -1>, Eigen::Matrix<int, -1, -1, 0, -1, -1>, Eigen::Matrix<int, -1, -1, 0, -1, -1>, Eigen::Matrix<double, -1, -1, 0, -1, -1> >(Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> > const &, Eigen::PlainObjectBase<Eigen::Matrix<int, -1, -1, 0, -1, -1> > const &, Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> > &, Eigen::PlainObjectBase<Eigen::Matrix<int, -1, -1, 0, -1, -1> > &, Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> > &);
+template bool igl::readMESH<Eigen::Matrix<double, -1, -1, 0, -1, -1>, Eigen::Matrix<int, -1, -1, 0, -1, -1>, Eigen::Matrix<int, -1, -1, 0, -1, -1>, Eigen::Matrix<double, -1, -1, 0, -1, -1> >(std::basic_string<char, struct std::char_traits<char>, std::allocator<char> >, Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> > &, Eigen::PlainObjectBase<Eigen::Matrix<int, -1, -1, 0, -1, -1> > &, Eigen::PlainObjectBase<Eigen::Matrix<int, -1, -1, 0, -1, -1> > &, Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> > &);
 #endif

@@ -5,13 +5,17 @@
 #include <imgui/imgui.h>
 #include <igl/opengl/glfw/Viewer.h>
 #include <igl/opengl/MeshGL.h>
+#include <igl/unproject_onto_mesh.h>
 #include "tutorial_shared_path.h"
+
+bool vertex_pick_enabled = false;
 
 Eigen::MatrixXd V;
 Eigen::MatrixXi T;
-Eigen::MatrixXd tV;
-Eigen::MatrixXi tF;
-Eigen::MatrixXd tC;
+Eigen::MatrixXi F;
+Eigen::MatrixXd C;
+Eigen::MatrixXi visible_F;
+Eigen::MatrixXd visible_C;
 
 
 struct SlicePlane {
@@ -50,11 +54,11 @@ Eigen::Quaternionf down_rotation = Eigen::Quaternionf::Identity();
 
 
 template <typename DerivedV, typename DerivedT>
-void updateTetVisibility(
+void updateTriVisibility(
 	const SlicePlane &slice_plane,
 	const Eigen::PlainObjectBase<DerivedV> &V,
-	const Eigen::PlainObjectBase<DerivedT> &T,
-	std::vector<bool> &tet_visibility)
+	const Eigen::PlainObjectBase<DerivedT> &F,
+	std::vector<bool> &tri_visibility)
 {
 	std::vector<bool> vert_visibility(V.rows());
 	for (int v_i = 0; v_i < V.rows(); ++v_i) {
@@ -65,13 +69,12 @@ void updateTetVisibility(
 			vert_visibility[v_i] = true;
 		}
 	}
-	tet_visibility.resize(T.rows());
-	for (int tet_i = 0; tet_i < T.rows(); ++tet_i) {
-		tet_visibility[tet_i] =
-			vert_visibility[T(tet_i, 0)] &&
-			vert_visibility[T(tet_i, 1)] &&
-			vert_visibility[T(tet_i, 2)] &&
-			vert_visibility[T(tet_i, 3)];
+	tri_visibility.resize(F.rows());
+	for (int tri_i = 0; tri_i < F.rows(); ++tri_i) {
+		tri_visibility[tri_i] =
+			vert_visibility[F(tri_i, 0)] &&
+			vert_visibility[F(tri_i, 1)] &&
+			vert_visibility[F(tri_i, 2)];
 	}
 }
 
@@ -80,12 +83,13 @@ template <typename DerivedV, typename DerivedT, typename DerivedF, typename Deri
 void updateVisibleIndices(
 	const SlicePlane &slice_plane,
 	const Eigen::PlainObjectBase<DerivedV> &V,
-	const Eigen::PlainObjectBase<DerivedT> &T,
-	Eigen::PlainObjectBase<DerivedF> &tF,
-	Eigen::PlainObjectBase<DerivedC> &tC)
+	const Eigen::PlainObjectBase<DerivedT> &F,
+	const Eigen::PlainObjectBase<DerivedC> &C,
+	Eigen::PlainObjectBase<DerivedF> &visible_F,
+	Eigen::PlainObjectBase<DerivedC> &visible_C)
 {
-	tF.resize(T.rows() * 4, 3); // max out the size for now
-	tC.resize(tF.rows(), 4);
+	visible_F.resize(F.rows(), 3); // max out the size for now
+	visible_C.resize(F.rows(), 4);
 	Eigen::MatrixX4d colorScheme;
 	colorScheme.resize(12, 4);
 
@@ -105,43 +109,25 @@ void updateVisibleIndices(
 
 	colorScheme /= 255.0f;
 
-	std::vector<bool> tet_visibility;
-	updateTetVisibility(slice_plane, V, T, tet_visibility);
+	std::vector<bool> tri_visibility;
+	updateTriVisibility(slice_plane, V, F, tri_visibility);
 
-	size_t tet_visible_idx = 0;
+	size_t tri_visible_idx = 0;
 
-	for (size_t tet_i = 0; tet_i < T.rows(); ++tet_i) {
-		if (!tet_visibility[tet_i]) {
+	for (size_t tri_i = 0; tri_i < F.rows(); ++tri_i) {
+		if (!tri_visibility[tri_i]) {
 			continue;
 		}
 
-		tF(4 * tet_visible_idx + 0, 0) = 12 * tet_i + 0;
-		tF(4 * tet_visible_idx + 0, 1) = 12 * tet_i + 1;
-		tF(4 * tet_visible_idx + 0, 2) = 12 * tet_i + 2;
+		visible_F(tri_visible_idx + 0, 0) = F(tri_i, 0);
+		visible_F(tri_visible_idx + 0, 1) = F(tri_i, 1);
+		visible_F(tri_visible_idx + 0, 2) = F(tri_i, 2);
 
-		tF(4 * tet_visible_idx + 1, 0) = 12 * tet_i + 3;
-		tF(4 * tet_visible_idx + 1, 1) = 12 * tet_i + 4;
-		tF(4 * tet_visible_idx + 1, 2) = 12 * tet_i + 5;
-
-		tF(4 * tet_visible_idx + 2, 0) = 12 * tet_i + 6;
-		tF(4 * tet_visible_idx + 2, 1) = 12 * tet_i + 7;
-		tF(4 * tet_visible_idx + 2, 2) = 12 * tet_i + 8;
-
-		tF(4 * tet_visible_idx + 3, 0) = 12 * tet_i + 9;
-		tF(4 * tet_visible_idx + 3, 1) = 12 * tet_i + 10;
-		tF(4 * tet_visible_idx + 3, 2) = 12 * tet_i + 11;
-
-		const size_t colorIdx = T(tet_i, 4) % 12;
-		Eigen::Vector4d color = colorScheme.row(colorIdx);
-		tC.row(4 * tet_visible_idx + 0) = color;
-		tC.row(4 * tet_visible_idx + 1) = color;
-		tC.row(4 * tet_visible_idx + 2) = color;
-		tC.row(4 * tet_visible_idx + 3) = color;
-
-		++tet_visible_idx;
+		visible_C.row(tri_visible_idx) = C.row(tri_i);
+		++tri_visible_idx;
 	}
-	tF.conservativeResize(tet_visible_idx * 4, Eigen::NoChange);
-	tC.conservativeResize(tet_visible_idx * 4, Eigen::NoChange);
+	visible_F.conservativeResize(tri_visible_idx, Eigen::NoChange);
+	visible_C.conservativeResize(tri_visible_idx, Eigen::NoChange);
 }
 
 
@@ -176,20 +162,11 @@ bool mouse_move(igl::opengl::glfw::Viewer& viewer, int mouse_x, int mouse_y) {
 		slice_plane.stored_vertices = slice_plane.vertices;
 
 		viewer.slice_plane.set_vertices(slice_plane.vertices);
-		updateVisibleIndices(slice_plane, V, T, tF, tC);
+		updateVisibleIndices(slice_plane, V, F, C, visible_F, visible_C);
 		viewer.erase_mesh(0);
-		viewer.data().set_mesh(tV, tF);
-		viewer.data().set_colors(tC);
+		viewer.data().set_mesh(V, visible_F);
+		viewer.data().set_colors(visible_C);
 		viewer.append_mesh();
-		return true;
-	}
-	return false;
-}
-
-
-bool mouse_down(igl::opengl::glfw::Viewer &viewer, int button, int modifier) {
-	if (slice_plane.active) {
-		down_rotation = trackball_angle;
 		return true;
 	}
 	return false;
@@ -199,8 +176,7 @@ bool mouse_down(igl::opengl::glfw::Viewer &viewer, int button, int modifier) {
 int main(int argc, char *argv[])
 {
   // Load a mesh in MESH format
-  igl::readMESH(TUTORIAL_SHARED_PATH "/cube.mesh", V, T);
-  igl::convertMESH(V, T, tV, tF, tC);
+  igl::readMESH(TUTORIAL_SHARED_PATH "/cube.mesh", V, T, F, C);
 
   // Init the viewer
   igl::opengl::glfw::Viewer viewer;
@@ -215,26 +191,26 @@ int main(int argc, char *argv[])
 	  // Draw parent menu content
 	  menu.draw_viewer_menu();
 
-	  // Add slice plane
+	  // Add slice plane panel
 	  if (ImGui::CollapsingHeader("Slice Plane", ImGuiTreeNodeFlags_DefaultOpen))
 	  {
 		  static float dist = 0.f;
 		  if (ImGui::Checkbox("enable", &slice_plane.enabled))
 		  {
 			  viewer.slice_enabled = slice_plane.enabled;
-			  updateVisibleIndices(slice_plane, V, T, tF, tC);
+			  updateVisibleIndices(slice_plane, V, F, C, visible_F, visible_C);
 			  viewer.erase_mesh(0);
-			  viewer.data().set_mesh(tV, tF);
-			  viewer.data().set_colors(tC);
+			  viewer.data().set_mesh(V, visible_F);
+			  viewer.data().set_colors(visible_C);
 			  viewer.append_mesh();
 		  }
 
 		  if (ImGui::Checkbox("active", &slice_plane.active))
 		  {
-			  updateVisibleIndices(slice_plane, V, T, tF, tC);
+			  updateVisibleIndices(slice_plane, V, F, C, visible_F, visible_C);
 			  viewer.erase_mesh(0);
-			  viewer.data().set_mesh(tV, tF);
-			  viewer.data().set_colors(tC);
+			  viewer.data().set_mesh(V, visible_F);
+			  viewer.data().set_colors(visible_C);
 			  viewer.append_mesh();
 		  }
 
@@ -282,10 +258,10 @@ int main(int argc, char *argv[])
 			  slice_plane.center = Eigen::Vector3d::Zero();
 			  dist = 0.;
 			  viewer.slice_plane.set_vertices(slice_plane.vertices);
-			  updateVisibleIndices(slice_plane, V, T, tF, tC);
+			  updateVisibleIndices(slice_plane, V, F, C, visible_F, visible_C);
 			  viewer.erase_mesh(0);
-			  viewer.data().set_mesh(tV, tF);
-			  viewer.data().set_colors(tC);
+			  viewer.data().set_mesh(V, visible_F);
+			  viewer.data().set_colors(visible_C);
 			  viewer.append_mesh();
 		  }
 		  
@@ -294,21 +270,48 @@ int main(int argc, char *argv[])
 			  slice_plane.center = slice_plane.normal * (double)dist;
 			  slice_plane.vertices = slice_plane.stored_vertices + (slice_plane.normal.transpose() * (double)dist).replicate(4, 1);
 			  viewer.slice_plane.set_vertices(slice_plane.vertices);
-			  updateVisibleIndices(slice_plane, V, T, tF, tC);
+			  updateVisibleIndices(slice_plane, V, F, C, visible_F, visible_C);
 			  viewer.erase_mesh(0);
-			  viewer.data().set_mesh(tV, tF);
-			  viewer.data().set_colors(tC);
+			  viewer.data().set_mesh(V, visible_F);
+			  viewer.data().set_colors(visible_C);
 			  viewer.append_mesh();
+		  }
+	  }
+	
+	  // Add pick panel
+	  if (ImGui::CollapsingHeader("pick", ImGuiTreeNodeFlags_DefaultOpen)) {
+		  if (ImGui::Checkbox("vertex", &vertex_pick_enabled)) {
 		  }
 	  }
   };
 
   // Register callbacks
   viewer.callback_mouse_move = &mouse_move;
+  viewer.callback_mouse_down = [](igl::opengl::glfw::Viewer &viewer, int, int)->bool
+  {
+	  if (vertex_pick_enabled) {
+		  int vid = -1;
+		  Eigen::Vector3f bc;
+		  // Cast a ray in the view direction starting from the mouse position
+		  double x = viewer.current_mouse_x;
+		  double y = viewer.core.viewport(3) - viewer.current_mouse_y;
+		  if (igl::unproject_onto_mesh(
+			  Eigen::Vector2f(x, y),
+			  viewer.core.view * viewer.core.model,
+			  viewer.core.proj,
+			  viewer.core.viewport,
+			  V, F, vid)) {
+			  std::cout << "picked vid = " << vid << std::endl;
+			  return true;
+
+		  }
+	  }
+	  return false;
+  };
 
   // Plot the mesh
-  viewer.data().set_mesh(tV, tF);
-  viewer.data().set_colors(tC);
+  viewer.data().set_mesh(V, F);
+  viewer.data().set_colors(C);
   viewer.append_mesh();
   viewer.launch();
 }
