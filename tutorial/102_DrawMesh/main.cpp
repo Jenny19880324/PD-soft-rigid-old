@@ -1,5 +1,7 @@
 #include <igl/readMESH.h>
 #include <igl/trackball.h>
+#include <igl/unproject.h>
+#include <igl/unproject_ray.h>
 #include <igl/opengl/glfw/imgui/ImGuiMenu.h>
 #include <igl/opengl/glfw/imgui/ImGuiHelpers.h>
 #include <imgui/imgui.h>
@@ -9,6 +11,8 @@
 #include "tutorial_shared_path.h"
 
 bool vertex_pick_enabled = false;
+
+std::vector<int> selected_vertices;
 
 Eigen::MatrixXd V;
 Eigen::MatrixXi T;
@@ -131,6 +135,23 @@ void updateVisibleIndices(
 }
 
 
+bool intersect_plane(
+	const Eigen::Vector3f &normal,
+	const Eigen::Vector3f &point_on_plane,
+	const Eigen::Vector3f &ray_origin,
+	const Eigen::Vector3f &ray_dir,
+	Eigen::Vector3f &intersection
+)
+{
+	if (abs(normal.dot(ray_dir)) > 1e-6) {
+		float t = (point_on_plane - ray_origin).dot(normal) / ray_dir.dot(normal);
+		intersection = ray_origin + ray_dir * t;
+		return true;
+	}
+	return false;
+}
+
+
 bool mouse_move(igl::opengl::glfw::Viewer& viewer, int mouse_x, int mouse_y) {
 	if (slice_plane.active && viewer.down) {
 		igl::trackball(
@@ -167,6 +188,38 @@ bool mouse_move(igl::opengl::glfw::Viewer& viewer, int mouse_x, int mouse_y) {
 		viewer.data().set_mesh(V, visible_F);
 		viewer.data().set_colors(visible_C);
 		return true;
+	}
+
+	if (vertex_pick_enabled && !selected_vertices.empty()) {
+		Eigen::Vector3d cm = Eigen::Vector3d::Zero();
+		for (int i = 0; i < selected_vertices.size(); ++i) {
+			cm += V.row(selected_vertices[i]);
+		}
+		cm /= selected_vertices.size();
+		Eigen::Vector3f normal = cm.cast<float>() - viewer.core.camera_eye ;
+
+		Eigen::Vector3f s, dir;
+		Eigen::Vector3f world_pos;
+		igl::unproject_ray(Eigen::Vector2f(mouse_x, viewer.core.viewport(3) - mouse_y), viewer.core.view, viewer.core.proj, viewer.core.viewport, s, dir);
+		dir.normalize(); normal.normalize();
+		Eigen::Vector4f world_cm;
+		world_cm << cm.cast<float>(), 1.0;
+		world_cm = viewer.core.model * world_cm;
+		if (intersect_plane(normal, world_cm.head<3>(), viewer.core.camera_eye, dir, world_pos)) {
+			Eigen::Vector4f w;
+			w << world_pos, 1.0;
+			w = viewer.core.model.inverse() * w;
+			world_pos = w.head<3>();
+			Eigen::Vector3d delta = world_pos.cast<double>() - cm;
+			Eigen::MatrixXd selected_V(selected_vertices.size(), 3);
+			for (int i = 0; i < selected_vertices.size(); ++i) {
+				V.row(selected_vertices[i]) += delta;
+				selected_V.row(i) = V.row(selected_vertices[i]);
+			}
+			viewer.data().set_vertices(V);
+			viewer.data().set_points(selected_V, Eigen::RowVector3d(1.0, 0.0, 0.0));
+			return true;
+		}
 	}
 	return false;
 }
@@ -275,7 +328,11 @@ int main(int argc, char *argv[])
 	
 	  // Add pick panel
 	  if (ImGui::CollapsingHeader("pick", ImGuiTreeNodeFlags_DefaultOpen)) {
-		  if (ImGui::Checkbox("vertex", &vertex_pick_enabled)) {
+		  if (ImGui::Checkbox("single vertex", &vertex_pick_enabled)) {
+		  }
+
+		  if (ImGui::Button("clear")) {
+			  viewer.data().points.resize(0, 0);
 		  }
 	  }
   };
@@ -296,10 +353,21 @@ int main(int argc, char *argv[])
 			  viewer.core.proj,
 			  viewer.core.viewport,
 			  V, F, vid)) {
-			  std::cout << "picked vid = " << vid << std::endl;
+			  viewer.data().add_points(V.row(vid), Eigen::RowVector3d(1., 0., 0.));
+			  selected_vertices.push_back(vid);
 			  return true;
 
 		  }
+	  }
+	  return false;
+  };
+
+  viewer.callback_mouse_up = [](igl::opengl::glfw::Viewer &viewer, int, int)->bool
+  {
+	  if (vertex_pick_enabled) {
+		  viewer.data().points.resize(0, 0);
+		  selected_vertices.clear();
+		  return true;
 	  }
 	  return false;
   };
