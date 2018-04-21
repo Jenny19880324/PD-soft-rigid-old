@@ -650,7 +650,7 @@ IGL_INLINE bool igl::readMESH(
 
 	// triangle indices
 	int tri[3];
-	F.resize(number_of_triangles, 3);
+	//F.resize(number_of_triangles, 3);
 	for (int i = 0; i<number_of_triangles; i++)
 	{
 		if (4 != fscanf(mesh_file, " %d %d %d %d", &tri[0], &tri[1], &tri[2], &extra))
@@ -658,9 +658,9 @@ IGL_INLINE bool igl::readMESH(
 			printf("Error: expecting triangle indices...\n");
 			return false;
 		}
-		F(i, 0) = tri[0] - 1;
-		F(i, 1) = tri[1] - 1;
-		F(i, 2) = tri[2] - 1;
+		//F(i, 0) = tri[0] - 1;
+		//F(i, 1) = tri[1] - 1;
+		//F(i, 2) = tri[2] - 1;
 	}
 
 	// eat comments
@@ -714,6 +714,15 @@ IGL_INLINE bool igl::readMESH(
 	}
 	fclose(mesh_file);
 
+	// construct Triangle from Tetrahedron
+	F.resize(4 * number_of_tetrahedra, 3);
+	for (int i = 0; i < number_of_tetrahedra; ++i) {
+		F(i * 4 + 0, 0) = T(i, 0); F(i * 4 + 0, 1) = T(i, 1); F(i * 4 + 0, 2) = T(i, 3);
+		F(i * 4 + 1, 0) = T(i, 1); F(i * 4 + 1, 1) = T(i, 2); F(i * 4 + 1, 2) = T(i, 3);
+		F(i * 4 + 2, 0) = T(i, 2); F(i * 4 + 2, 1) = T(i, 0); F(i * 4 + 2, 2) = T(i, 3);
+		F(i * 4 + 3, 0) = T(i, 0); F(i * 4 + 3, 1) = T(i, 2); F(i * 4 + 3, 2) = T(i, 1);
+	}
+
 	// assign different colors to faces belong to rigid tets
 
 	// http://colorbrewer2.org
@@ -738,7 +747,7 @@ IGL_INLINE bool igl::readMESH(
 
 	colorScheme /= 255.0f;
 	C.resize(F.rows(), 4);
-	for (int f_i = 0; f_i < number_of_triangles; ++f_i) {
+	for (int f_i = 0; f_i < F.rows(); ++f_i) {
 		bool is_rigid_face = rigid_vertex_set.find(F(f_i, 0)) != rigid_vertex_set.end() &&
 			rigid_vertex_set.find(F(f_i, 1)) != rigid_vertex_set.end() &&
 			rigid_vertex_set.find(F(f_i, 2)) != rigid_vertex_set.end();

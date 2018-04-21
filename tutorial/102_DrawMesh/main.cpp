@@ -62,7 +62,7 @@ void updateTriVisibility(
 	const SlicePlane &slice_plane,
 	const Eigen::PlainObjectBase<DerivedV> &V,
 	const Eigen::PlainObjectBase<DerivedT> &F,
-	std::vector<bool> &tri_visibility)
+	std::vector<bool> &tet_visibility)
 {
 	std::vector<bool> vert_visibility(V.rows());
 	for (int v_i = 0; v_i < V.rows(); ++v_i) {
@@ -73,12 +73,13 @@ void updateTriVisibility(
 			vert_visibility[v_i] = true;
 		}
 	}
-	tri_visibility.resize(F.rows());
-	for (int tri_i = 0; tri_i < F.rows(); ++tri_i) {
-		tri_visibility[tri_i] =
-			vert_visibility[F(tri_i, 0)] &&
-			vert_visibility[F(tri_i, 1)] &&
-			vert_visibility[F(tri_i, 2)];
+	tet_visibility.resize(T.rows());
+	for (int tet_i = 0; tet_i < T.rows(); ++tet_i) {
+		tet_visibility[tet_i] =
+			vert_visibility[T(tet_i, 0)] &&
+			vert_visibility[T(tet_i, 1)] &&
+			vert_visibility[T(tet_i, 2)] &&
+			vert_visibility[T(tet_i, 3)];
 	}
 }
 
@@ -87,13 +88,13 @@ template <typename DerivedV, typename DerivedT, typename DerivedF, typename Deri
 void updateVisibleIndices(
 	const SlicePlane &slice_plane,
 	const Eigen::PlainObjectBase<DerivedV> &V,
-	const Eigen::PlainObjectBase<DerivedT> &F,
+	const Eigen::PlainObjectBase<DerivedT> &T,
 	const Eigen::PlainObjectBase<DerivedC> &C,
 	Eigen::PlainObjectBase<DerivedF> &visible_F,
 	Eigen::PlainObjectBase<DerivedC> &visible_C)
 {
-	visible_F.resize(F.rows(), 3); // max out the size for now
-	visible_C.resize(F.rows(), 4);
+	visible_F.resize(T.rows() * 4, 3); // max out the size for now
+	visible_C.resize(T.rows() * 4, 4);
 	Eigen::MatrixX4d colorScheme;
 	colorScheme.resize(12, 4);
 
@@ -113,25 +114,40 @@ void updateVisibleIndices(
 
 	colorScheme /= 255.0f;
 
-	std::vector<bool> tri_visibility;
-	updateTriVisibility(slice_plane, V, F, tri_visibility);
+	std::vector<bool> tet_visibility;
+	updateTriVisibility(slice_plane, V, F, tet_visibility);
 
-	size_t tri_visible_idx = 0;
+	size_t tet_visible_idx = 0;
 
-	for (size_t tri_i = 0; tri_i < F.rows(); ++tri_i) {
-		if (!tri_visibility[tri_i]) {
+	for (size_t tet_i = 0; tet_i < T.rows(); ++tet_i) {
+		if (!tet_visibility[tet_i]) {
 			continue;
 		}
 
-		visible_F(tri_visible_idx + 0, 0) = F(tri_i, 0);
-		visible_F(tri_visible_idx + 0, 1) = F(tri_i, 1);
-		visible_F(tri_visible_idx + 0, 2) = F(tri_i, 2);
+		visible_F(tet_visible_idx * 4 + 0, 0) = T(tet_i, 0); 
+		visible_F(tet_visible_idx * 4 + 0, 1) = T(tet_i, 1);
+		visible_F(tet_visible_idx * 4 + 0, 2) = T(tet_i, 3);
 
-		visible_C.row(tri_visible_idx) = C.row(tri_i);
-		++tri_visible_idx;
+		visible_F(tet_visible_idx * 4 + 1, 0) = T(tet_i, 1);
+		visible_F(tet_visible_idx * 4 + 1, 1) = T(tet_i, 2);
+		visible_F(tet_visible_idx * 4 + 1, 2) = T(tet_i, 3);
+
+		visible_F(tet_visible_idx * 4 + 2, 0) = T(tet_i, 2);
+		visible_F(tet_visible_idx * 4 + 2, 1) = T(tet_i, 0);
+		visible_F(tet_visible_idx * 4 + 2, 2) = T(tet_i, 3);
+
+		visible_F(tet_visible_idx * 4 + 3, 0) = T(tet_i, 0);
+		visible_F(tet_visible_idx * 4 + 3, 1) = T(tet_i, 2);
+		visible_F(tet_visible_idx * 4 + 3, 2) = T(tet_i, 1);
+
+		visible_C.row(tet_visible_idx * 4 + 0) = C.row(tet_i * 4 + 0);
+		visible_C.row(tet_visible_idx * 4 + 1) = C.row(tet_i * 4 + 1);
+		visible_C.row(tet_visible_idx * 4 + 2) = C.row(tet_i * 4 + 2);
+		visible_C.row(tet_visible_idx * 4 + 3) = C.row(tet_i * 4 + 3);
+		++tet_visible_idx;
 	}
-	visible_F.conservativeResize(tri_visible_idx, Eigen::NoChange);
-	visible_C.conservativeResize(tri_visible_idx, Eigen::NoChange);
+	visible_F.conservativeResize(tet_visible_idx * 4, Eigen::NoChange);
+	visible_C.conservativeResize(tet_visible_idx * 4, Eigen::NoChange);
 }
 
 
@@ -183,7 +199,7 @@ bool mouse_move(igl::opengl::glfw::Viewer& viewer, int mouse_x, int mouse_y) {
 		slice_plane.stored_vertices = slice_plane.vertices;
 
 		viewer.slice_plane.set_vertices(slice_plane.vertices);
-		updateVisibleIndices(slice_plane, V, F, C, visible_F, visible_C);
+		updateVisibleIndices(slice_plane, V, T, C, visible_F, visible_C);
 		viewer.data().clear();
 		viewer.data().set_mesh(V, visible_F);
 		viewer.data().set_colors(visible_C);
@@ -250,7 +266,7 @@ int main(int argc, char *argv[])
 		  if (ImGui::Checkbox("enable", &slice_plane.enabled))
 		  {
 			  viewer.slice_enabled = slice_plane.enabled;
-			  updateVisibleIndices(slice_plane, V, F, C, visible_F, visible_C);
+			  updateVisibleIndices(slice_plane, V, T, C, visible_F, visible_C);
 			  viewer.data().clear();
 			  viewer.data().set_mesh(V, visible_F);
 			  viewer.data().set_colors(visible_C);
@@ -258,7 +274,7 @@ int main(int argc, char *argv[])
 
 		  if (ImGui::Checkbox("active", &slice_plane.active))
 		  {
-			  updateVisibleIndices(slice_plane, V, F, C, visible_F, visible_C);
+			  updateVisibleIndices(slice_plane, V, T, C, visible_F, visible_C);
 			  viewer.data().clear();
 			  viewer.data().set_mesh(V, visible_F);
 			  viewer.data().set_colors(visible_C);
@@ -308,7 +324,7 @@ int main(int argc, char *argv[])
 			  slice_plane.center = Eigen::Vector3d::Zero();
 			  dist = 0.;
 			  viewer.slice_plane.set_vertices(slice_plane.vertices);
-			  updateVisibleIndices(slice_plane, V, F, C, visible_F, visible_C);
+			  updateVisibleIndices(slice_plane, V, T, C, visible_F, visible_C);
 			  viewer.data().clear();
 			  viewer.data().set_mesh(V, visible_F);
 			  viewer.data().set_colors(visible_C);
@@ -319,7 +335,7 @@ int main(int argc, char *argv[])
 			  slice_plane.center = slice_plane.normal * (double)dist;
 			  slice_plane.vertices = slice_plane.stored_vertices + (slice_plane.normal.transpose() * (double)dist).replicate(4, 1);
 			  viewer.slice_plane.set_vertices(slice_plane.vertices);
-			  updateVisibleIndices(slice_plane, V, F, C, visible_F, visible_C);
+			  updateVisibleIndices(slice_plane, V, T, C, visible_F, visible_C);
 			  viewer.data().clear();
 			  viewer.data().set_mesh(V, visible_F);
 			  viewer.data().set_colors(visible_C);
