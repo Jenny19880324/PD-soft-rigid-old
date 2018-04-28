@@ -29,6 +29,11 @@ namespace igl
     const Eigen::PlainObjectBase<DerivedS> & S,
     const bool single_precision,
           Eigen::PlainObjectBase<DerivedD> & R);
+
+  template <typename DerivedS, typename DerivedD>
+  IGL_INLINE void fit_rotations(
+	  const Eigen::PlainObjectBase < DerivedS> & S,
+	  Eigen::PlainObjectBase<DerivedD> & R);
   
   // FIT_ROTATIONS Given an input mesh and new positions find 2D rotations for
   // every vertex that best maps its one ring to the new one ring

@@ -8,18 +8,30 @@
 #include <igl/opengl/glfw/Viewer.h>
 #include <igl/opengl/MeshGL.h>
 #include <igl/unproject_onto_mesh.h>
+#include <igl/colon.h>
+#include <igl/directed_edge_orientations.h>
+#include <igl/directed_edge_parents.h>
+#include <igl/forward_kinematics.h>
+#include <igl/PI.h>
+#include <igl/lbs_matrix.h>
+#include <igl/deform_skeleton.h>
+#include <igl/dqs.h>
+#include <igl/rbc.h>
 #include "tutorial_shared_path.h"
 
 bool vertex_pick_enabled = false;
 
-std::vector<int> selected_vertices;
-
-Eigen::MatrixXd V;
+Eigen::MatrixXd V, U;
 Eigen::MatrixXi T;
 Eigen::MatrixXi F;
 Eigen::MatrixXd C;
 Eigen::MatrixXi visible_F;
 Eigen::MatrixXd visible_C;
+Eigen::Matrix<double, Eigen::Dynamic, 3> bc;
+Eigen::VectorXi b;
+double anim_t = 0.0;
+double anim_t_dir = 0.033;
+igl::RBCData rbc_data;
 
 
 struct SlicePlane {
@@ -199,19 +211,19 @@ bool mouse_move(igl::opengl::glfw::Viewer& viewer, int mouse_x, int mouse_y) {
 		slice_plane.stored_vertices = slice_plane.vertices;
 
 		viewer.slice_plane.set_vertices(slice_plane.vertices);
-		updateVisibleIndices(slice_plane, V, T, C, visible_F, visible_C);
+		updateVisibleIndices(slice_plane, U, T, C, visible_F, visible_C);
 		viewer.data().clear();
-		viewer.data().set_mesh(V, visible_F);
+		viewer.data().set_mesh(U, visible_F);
 		viewer.data().set_colors(visible_C);
 		return true;
 	}
 
-	if (vertex_pick_enabled && !selected_vertices.empty()) {
+	if (vertex_pick_enabled && b.rows() > 0) {
 		Eigen::Vector3d cm = Eigen::Vector3d::Zero();
-		for (int i = 0; i < selected_vertices.size(); ++i) {
-			cm += V.row(selected_vertices[i]);
+		for (int i = 0; i < b.rows(); ++i) {
+			cm += U.row(b(i));
 		}
-		cm /= selected_vertices.size();
+		cm /= b.size();
 		Eigen::Vector3f normal = cm.cast<float>() - viewer.core.camera_eye ;
 
 		Eigen::Vector3f s, dir;
@@ -227,15 +239,45 @@ bool mouse_move(igl::opengl::glfw::Viewer& viewer, int mouse_x, int mouse_y) {
 			w = viewer.core.model.inverse() * w;
 			world_pos = w.head<3>();
 			Eigen::Vector3d delta = world_pos.cast<double>() - cm;
-			Eigen::MatrixXd selected_V(selected_vertices.size(), 3);
-			for (int i = 0; i < selected_vertices.size(); ++i) {
-				V.row(selected_vertices[i]) += delta;
-				selected_V.row(i) = V.row(selected_vertices[i]);
+			bc.resize(b.size(), 3);
+			for (int i = 0; i < b.size(); ++i) {
+				U.row(b(i)) += delta;
+				bc.row(i) = U.row(b(i));
 			}
-			viewer.data().set_vertices(V);
-			viewer.data().set_points(selected_V, Eigen::RowVector3d(1.0, 0.0, 0.0));
+			viewer.data().set_vertices(U);
+			viewer.data().set_points(bc, Eigen::RowVector3d(1.0, 0.0, 0.0));
+			igl::rbc_precomputation(V, T, V.cols(), b, rbc_data);
 			return true;
 		}
+	}
+	return false;
+}
+
+
+bool pre_draw(igl::opengl::glfw::Viewer &viewer)
+{
+	using namespace Eigen;
+	using namespace std;
+
+	igl::rbc_solve(bc, rbc_data, U);
+	viewer.data().set_vertices(U);
+	viewer.data().compute_normals();
+
+	if (viewer.core.is_animating)
+	{
+		anim_t += anim_t_dir;
+	}
+	return false;
+}
+
+
+bool key_down(igl::opengl::glfw::Viewer &viewer, unsigned char key, int mods)
+{
+	switch (key)
+	{
+	case ' ':
+		viewer.core.is_animating = !viewer.core.is_animating;
+		return true;
 	}
 	return false;
 }
@@ -245,6 +287,7 @@ int main(int argc, char *argv[])
 {
   // Load a mesh in MESH format
   igl::readMESH(TUTORIAL_SHARED_PATH "/cube.mesh", V, T, F, C);
+  U = V;
 
   // Init the viewer
   igl::opengl::glfw::Viewer viewer;
@@ -266,17 +309,17 @@ int main(int argc, char *argv[])
 		  if (ImGui::Checkbox("enable", &slice_plane.enabled))
 		  {
 			  viewer.slice_enabled = slice_plane.enabled;
-			  updateVisibleIndices(slice_plane, V, T, C, visible_F, visible_C);
+			  updateVisibleIndices(slice_plane, U, T, C, visible_F, visible_C);
 			  viewer.data().clear();
-			  viewer.data().set_mesh(V, visible_F);
+			  viewer.data().set_mesh(U, visible_F);
 			  viewer.data().set_colors(visible_C);
 		  }
 
 		  if (ImGui::Checkbox("active", &slice_plane.active))
 		  {
-			  updateVisibleIndices(slice_plane, V, T, C, visible_F, visible_C);
+			  updateVisibleIndices(slice_plane, U, T, C, visible_F, visible_C);
 			  viewer.data().clear();
-			  viewer.data().set_mesh(V, visible_F);
+			  viewer.data().set_mesh(U, visible_F);
 			  viewer.data().set_colors(visible_C);
 		  }
 
@@ -324,9 +367,9 @@ int main(int argc, char *argv[])
 			  slice_plane.center = Eigen::Vector3d::Zero();
 			  dist = 0.;
 			  viewer.slice_plane.set_vertices(slice_plane.vertices);
-			  updateVisibleIndices(slice_plane, V, T, C, visible_F, visible_C);
+			  updateVisibleIndices(slice_plane, U, T, C, visible_F, visible_C);
 			  viewer.data().clear();
-			  viewer.data().set_mesh(V, visible_F);
+			  viewer.data().set_mesh(U, visible_F);
 			  viewer.data().set_colors(visible_C);
 		  }
 		  
@@ -335,9 +378,9 @@ int main(int argc, char *argv[])
 			  slice_plane.center = slice_plane.normal * (double)dist;
 			  slice_plane.vertices = slice_plane.stored_vertices + (slice_plane.normal.transpose() * (double)dist).replicate(4, 1);
 			  viewer.slice_plane.set_vertices(slice_plane.vertices);
-			  updateVisibleIndices(slice_plane, V, T, C, visible_F, visible_C);
+			  updateVisibleIndices(slice_plane, U, T, C, visible_F, visible_C);
 			  viewer.data().clear();
-			  viewer.data().set_mesh(V, visible_F);
+			  viewer.data().set_mesh(U, visible_F);
 			  viewer.data().set_colors(visible_C);
 		  }
 	  }
@@ -355,6 +398,8 @@ int main(int argc, char *argv[])
 
   // Register callbacks
   viewer.callback_mouse_move = &mouse_move;
+  viewer.callback_pre_draw = &pre_draw;
+  viewer.callback_key_down = &key_down;
   viewer.callback_mouse_down = [](igl::opengl::glfw::Viewer &viewer, int, int)->bool
   {
 	  if (vertex_pick_enabled) {
@@ -368,9 +413,10 @@ int main(int argc, char *argv[])
 			  viewer.core.view * viewer.core.model,
 			  viewer.core.proj,
 			  viewer.core.viewport,
-			  V, F, vid)) {
-			  viewer.data().add_points(V.row(vid), Eigen::RowVector3d(1., 0., 0.));
-			  selected_vertices.push_back(vid);
+			  U, F, vid)) {
+			  viewer.data().add_points(U.row(vid), Eigen::RowVector3d(1., 0., 0.));
+			  b.resize(b.rows() + 1);
+			  b.tail<1>() << vid;
 			  return true;
 
 		  }
@@ -382,15 +428,25 @@ int main(int argc, char *argv[])
   {
 	  if (vertex_pick_enabled) {
 		  viewer.data().points.resize(0, 0);
-		  selected_vertices.clear();
+		  b.resize(0);
+		  bc.resize(0, 3);
+		  igl::rbc_precomputation(V, T, V.cols(), b, rbc_data);
 		  return true;
 	  }
 	  return false;
   };
 
+  // Precomputation
+  //rbc_data.max_iter = 100;
+  rbc_data.with_dynamics = true;
+  //rbc_data.h = 0.033;
+  igl::rbc_precomputation(V, T, V.cols(), b, rbc_data);
+
   // Plot the mesh
   viewer.data().set_mesh(V, F);
   viewer.data().set_colors(C);
+  viewer.core.is_animating = false;
+  viewer.core.animation_max_fps = 30.;
   viewer.launch();
 }
 

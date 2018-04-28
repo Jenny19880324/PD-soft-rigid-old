@@ -67,7 +67,7 @@ IGL_INLINE bool igl::arap_precomputation(
   const PlainObjectBase<DerivedV>& ref_V = (flat?plane_V:V);
   const PlainObjectBase<DerivedF>& ref_F = (flat?plane_F:F);
   SparseMatrixS L;
-  cotmatrix(V,F,L);
+  cotmatrix(V, F, L);
 
   ARAPEnergyType eff_energy = data.energy;
   if(eff_energy == ARAP_ENERGY_TYPE_DEFAULT)

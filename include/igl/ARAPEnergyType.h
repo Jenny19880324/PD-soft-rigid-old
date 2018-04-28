@@ -21,6 +21,9 @@ namespace igl
   //       [Liu et al.  2010] or "A simple geometric model for elastic
   //       deformation" by [Chao et al.  2010], rotations defined at elements
   //       (triangles or tets) 
+  //     ARAP_ENERGY_TYPE_COROT "Projective Dynamics: Fusing Constraint Projections for Fast Simulation" 
+  //      by [Bouaziz et al. 2014] or "Quasi-Newton Methods for Real-time Simulation of Hyperelastic Materials"
+  //    by [Liu et al. 2017], rotations defined at elements (tets)
   //     ARAP_ENERGY_TYPE_DEFAULT  Choose one automatically: spokes and rims
   //       for surfaces, elements for planar meshes and tets (not fully
   //       supported)

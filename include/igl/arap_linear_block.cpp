@@ -9,6 +9,7 @@
 #include "verbose.h"
 #include "cotmatrix_entries.h"
 #include <Eigen/Dense>
+#include <iostream>
 
 template <typename MatV, typename MatF, typename Scalar>
 IGL_INLINE void igl::arap_linear_block(
@@ -28,7 +29,6 @@ IGL_INLINE void igl::arap_linear_block(
       break;
     case ARAP_ENERGY_TYPE_ELEMENTS:
       return igl::arap_linear_block_elements(V,F,d,Kd);
-      break;
     default:
       verbose("Unsupported energy type: %d\n",energy);
       assert(false);
@@ -245,7 +245,6 @@ IGL_INLINE void igl::arap_linear_block_elements(
   Kd.setFromTriplets(Kd_IJV.begin(),Kd_IJV.end());
   Kd.makeCompressed();
 }
-
 
 #ifdef IGL_STATIC_LIBRARY
 // Explicit template instantiation

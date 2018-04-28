@@ -69,6 +69,12 @@ namespace igl
     const MatF & F,
     const int d,
     Eigen::SparseMatrix<Scalar> & Kd);
+  template <typename MatV, typename MatF, typename Scalar>
+  IGL_INLINE void arap_linear_block_corot(
+	  const MatV & V,
+	  const MatF & F,
+	  const int d,
+	  Eigen::SparseMatrix<Scalar> & Kd);
 }
 
 #ifndef IGL_STATIC_LIBRARY

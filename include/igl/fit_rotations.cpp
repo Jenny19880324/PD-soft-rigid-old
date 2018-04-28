@@ -63,6 +63,34 @@ IGL_INLINE void igl::fit_rotations(
 }
 
 template <typename DerivedS, typename DerivedD>
+IGL_INLINE void igl::fit_rotations(
+	const Eigen::PlainObjectBase<DerivedS> & S,
+	Eigen::PlainObjectBase<DerivedD> & R)
+{
+	using namespace std;
+	const int dim = S.cols();
+	const int nr = S.rows() / 3;
+
+	// resize output
+	R.resize(dim * nr, dim);
+
+	Eigen::Matrix<typename DerivedS::Scalar, 3, 3> si;
+	for (int r = 0; r < nr; r++) {
+		for (int i = 0; i < dim; i++) {
+			for (int j = 0; j < dim; j++) {
+				si(i, j) = S(r * 3 + i, j);
+			}
+		}
+		typedef Eigen::Matrix<typename DerivedD::Scalar, 3, 3> Mat3;
+		typedef Eigen::Matrix<typename DerivedD::Scalar, 3, 1> Vec3;
+		Mat3 ri;
+		polar_svd3x3(si, ri);
+		assert(ri.determinant() >= 0);
+		R.block(r * dim, 0, dim, dim) = ri;
+	}
+}
+
+template <typename DerivedS, typename DerivedD>
 IGL_INLINE void igl::fit_rotations_planar(
   const Eigen::PlainObjectBase<DerivedS> & S,
         Eigen::PlainObjectBase<DerivedD> & R)
@@ -222,4 +250,6 @@ template void igl::fit_rotations<Eigen::Matrix<double, -1, -1, 0, -1, -1>, Eigen
 template void igl::fit_rotations_planar<Eigen::Matrix<double, -1, -1, 0, -1, -1>, Eigen::Matrix<double, -1, -1, 0, -1, -1> >(Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> > const&, Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> >&);
 template void igl::fit_rotations_planar<Eigen::Matrix<float, -1, -1, 0, -1, -1>, Eigen::Matrix<float, -1, -1, 0, -1, -1> >(Eigen::PlainObjectBase<Eigen::Matrix<float, -1, -1, 0, -1, -1> > const&, Eigen::PlainObjectBase<Eigen::Matrix<float, -1, -1, 0, -1, -1> >&);
 template void igl::fit_rotations<Eigen::Matrix<float,-1,-1,0,-1,-1>,Eigen::Matrix<float,-1,-1,0,-1,-1> >(Eigen::PlainObjectBase<Eigen::Matrix<float,-1,-1,0,-1,-1> > const &,bool,Eigen::PlainObjectBase<Eigen::Matrix<float,-1,-1,0,-1,-1> > &);
+template void igl::fit_rotations<Eigen::Matrix<double, -1, -1, 0, -1, -1>, Eigen::Matrix<double, -1, -1, 0, -1, -1> >(Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> > const &, Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> > &);
+
 #endif

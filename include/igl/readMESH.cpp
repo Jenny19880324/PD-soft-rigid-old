@@ -687,7 +687,7 @@ IGL_INLINE bool igl::readMESH(
 		return false;
 	}
 	// allocate space for tetrahedra
-	T.resize(number_of_tetrahedra, 5);
+	T.resize(number_of_tetrahedra, 4);
 	// tet indices
 	int a, b, c, d;
 	std::unordered_set<int> rigid_vertex_set;
@@ -703,7 +703,6 @@ IGL_INLINE bool igl::readMESH(
 		T(i, 1) = b - 1;
 		T(i, 2) = c - 1;
 		T(i, 3) = d - 1;
-		T(i, 4) = extra;
 
 		if (extra == 0) {
 			rigid_vertex_set.insert(T(i, 0));

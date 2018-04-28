@@ -38,7 +38,6 @@ IGL_INLINE void igl::arap_rhs(
       //nr = n;
       break;
     case ARAP_ENERGY_TYPE_ELEMENTS:
-      //nr = m;
       break;
     default:
       fprintf(

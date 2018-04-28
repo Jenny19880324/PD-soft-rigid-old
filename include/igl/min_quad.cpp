@@ -5,7 +5,7 @@
 // This Source Code Form is subject to the terms of the Mozilla Public License
 // v. 2.0. If a copy of the MPL was not distributed with this file, You can
 // obtain one at http://mozilla.org/MPL/2.0/.
-#include "min_quad_with_fixed.h"
+#include "min_quad.h"
 
 #include "slice.h"
 #include "is_symmetric.h"
@@ -24,357 +24,38 @@
 #include <cstdio>
 #include <iostream>
 
-template <typename T, typename Derivedknown>
-IGL_INLINE bool igl::min_quad_with_fixed_precompute(
-  const Eigen::SparseMatrix<T>& A2,
-  const Eigen::MatrixBase<Derivedknown> & known,
-  const Eigen::SparseMatrix<T>& Aeq,
+template <typename T>
+IGL_INLINE bool igl::min_quad_precompute(
+  const Eigen::SparseMatrix<T>& A,
   const bool pd,
-  min_quad_with_fixed_data<T> & data
+  min_quad_data<T> & data
   )
 {
 //#define MIN_QUAD_WITH_FIXED_CPP_DEBUG
   using namespace Eigen;
   using namespace std;
-  const Eigen::SparseMatrix<T> A = 0.5*A2;
-#ifdef MIN_QUAD_WITH_FIXED_CPP_DEBUG
-  cout<<"    pre"<<endl;
-#endif
   // number of rows
   int n = A.rows();
   // cache problem size
   data.n = n;
 
-  int neq = Aeq.rows();
-  // default is to have 0 linear equality constraints
-  if(Aeq.size() != 0)
-  {
-    assert(n == Aeq.cols() && "#Aeq.cols() should match A.rows()");
-  }
-
   assert(A.rows() == n && "A should be square");
   assert(A.cols() == n && "A should be square");
 
-  // number of known rows
-  int kr = known.size();
-
-  assert((kr == 0 || known.minCoeff() >= 0)&& "known indices should be in [0,n)");
-  assert((kr == 0 || known.maxCoeff() < n) && "known indices should be in [0,n)");
-  assert(neq <= n && "Number of equality constraints should be less than DOFs");
-
-
-  // cache known
-  data.known = known;
-  // get list of unknown indices
-  data.unknown.resize(n-kr);
-  std::vector<bool> unknown_mask;
-  unknown_mask.resize(n,true);
-  for(int i = 0;i<kr;i++)
+  data.llt.compute(A);
+  switch(data.llt.info())
   {
-    unknown_mask[known(i)] = false;
+	case Eigen::Success:
+	  break;
+	case Eigen::NumericalIssue:
+	  cerr<<"Error: Numerical issue."<<endl;
+	  return false;
+	default:
+	  cerr<<"Error: Other."<<endl;
+	  return false;
   }
-  int u = 0;
-  for(int i = 0;i<n;i++)
-  {
-    if(unknown_mask[i])
-    {
-      data.unknown(u) = i;
-      u++;
-    }
-  }
-  // get list of lagrange multiplier indices
-  data.lagrange.resize(neq);
-  for(int i = 0;i<neq;i++)
-  {
-    data.lagrange(i) = n + i;
-  }
-  // cache unknown followed by lagrange indices
-  data.unknown_lagrange.resize(data.unknown.size()+data.lagrange.size());
-  // Would like to do:
-  //data.unknown_lagrange << data.unknown, data.lagrange;
-  // but Eigen can't handle empty vectors in comma initialization
-  // https://forum.kde.org/viewtopic.php?f=74&t=107974&p=364947#p364947
-  if(data.unknown.size() > 0)
-  {
-    data.unknown_lagrange.head(data.unknown.size()) = data.unknown;
-  }
-  if(data.lagrange.size() > 0)
-  {
-    data.unknown_lagrange.tail(data.lagrange.size()) = data.lagrange;
-  }
-
-  SparseMatrix<T> Auu;
-  slice(A,data.unknown,data.unknown,Auu);
-  assert(Auu.size() != 0 && Auu.rows() > 0 && "There should be at least one unknown.");
-
-  // Positive definiteness is *not* determined, rather it is given as a
-  // parameter
-  data.Auu_pd = pd;
-  if(data.Auu_pd)
-  {
-    // PD implies symmetric
-    data.Auu_sym = true;
-    // This is an annoying assertion unless EPS can be chosen in a nicer way.
-    //assert(is_symmetric(Auu,EPS<double>()));
-    assert(is_symmetric(Auu,1.0) &&
-      "Auu should be symmetric if positive definite");
-  }else
-  {
-    // determine if A(unknown,unknown) is symmetric and/or positive definite
-    VectorXi AuuI,AuuJ;
-    MatrixXd AuuV;
-    find(Auu,AuuI,AuuJ,AuuV);
-    data.Auu_sym = is_symmetric(Auu,EPS<double>()*AuuV.maxCoeff());
-  }
-
-  // Determine number of linearly independent constraints
-  int nc = 0;
-  if(neq>0)
-  {
-#ifdef MIN_QUAD_WITH_FIXED_CPP_DEBUG
-    cout<<"    qr"<<endl;
-#endif
-    // QR decomposition to determine row rank in Aequ
-    slice(Aeq,data.unknown,2,data.Aequ);
-    assert(data.Aequ.rows() == neq &&
-      "#Rows in Aequ should match #constraints");
-    assert(data.Aequ.cols() == data.unknown.size() &&
-      "#cols in Aequ should match #unknowns");
-    data.AeqTQR.compute(data.Aequ.transpose().eval());
-#ifdef MIN_QUAD_WITH_FIXED_CPP_DEBUG
-    cout<<endl<<matlab_format(SparseMatrix<T>(data.Aequ.transpose().eval()),"AeqT")<<endl<<endl;
-#endif
-    switch(data.AeqTQR.info())
-    {
-      case Eigen::Success:
-        break;
-      case Eigen::NumericalIssue:
-        cerr<<"Error: Numerical issue."<<endl;
-        return false;
-      case Eigen::InvalidInput:
-        cerr<<"Error: Invalid input."<<endl;
-        return false;
-      default:
-        cerr<<"Error: Other."<<endl;
-        return false;
-    }
-    nc = data.AeqTQR.rank();
-    assert(nc<=neq &&
-      "Rank of reduced constraints should be <= #original constraints");
-    data.Aeq_li = nc == neq;
-    //cout<<"data.Aeq_li: "<<data.Aeq_li<<endl;
-  }else
-  {
-    data.Aeq_li = true;
-  }
-
-  if(data.Aeq_li)
-  {
-#ifdef MIN_QUAD_WITH_FIXED_CPP_DEBUG
-    cout<<"    Aeq_li=true"<<endl;
-#endif
-    // Append lagrange multiplier quadratic terms
-    SparseMatrix<T> new_A;
-    SparseMatrix<T> AeqT = Aeq.transpose();
-    SparseMatrix<T> Z(neq,neq);
-    // This is a bit slower. But why isn't cat fast?
-    new_A = cat(1, cat(2,   A, AeqT ),
-                   cat(2, Aeq,    Z ));
-
-    // precompute RHS builders
-    if(kr > 0)
-    {
-      SparseMatrix<T> Aulk,Akul;
-      // Slow
-      slice(new_A,data.unknown_lagrange,data.known,Aulk);
-      //// This doesn't work!!!
-      //data.preY = Aulk + Akul.transpose();
-      // Slow
-      if(data.Auu_sym)
-      {
-        data.preY = Aulk*2;
-      }else
-      {
-        slice(new_A,data.known,data.unknown_lagrange,Akul);
-        SparseMatrix<T> AkulT = Akul.transpose();
-        data.preY = Aulk + AkulT;
-      }
-    }else
-    {
-      data.preY.resize(data.unknown_lagrange.size(),0);
-    }
-
-    // Positive definite and no equality constraints (Positive definiteness
-    // implies symmetric)
-#ifdef MIN_QUAD_WITH_FIXED_CPP_DEBUG
-    cout<<"    factorize"<<endl;
-#endif
-    if(data.Auu_pd && neq == 0)
-    {
-#ifdef MIN_QUAD_WITH_FIXED_CPP_DEBUG
-    cout<<"    llt"<<endl;
-#endif
-      data.llt.compute(Auu);
-      switch(data.llt.info())
-      {
-        case Eigen::Success:
-          break;
-        case Eigen::NumericalIssue:
-          cerr<<"Error: Numerical issue."<<endl;
-          return false;
-        default:
-          cerr<<"Error: Other."<<endl;
-          return false;
-      }
-      data.solver_type = min_quad_with_fixed_data<T>::LLT;
-    }else
-    {
-#ifdef MIN_QUAD_WITH_FIXED_CPP_DEBUG
-    cout<<"    ldlt"<<endl;
-#endif
-      // Either not PD or there are equality constraints
-      SparseMatrix<T> NA;
-      slice(new_A,data.unknown_lagrange,data.unknown_lagrange,NA);
-      data.NA = NA;
-      // Ideally we'd use LDLT but Eigen doesn't support positive semi-definite
-      // matrices:
-      // http://forum.kde.org/viewtopic.php?f=74&t=106962&p=291990#p291990
-      if(data.Auu_sym && false)
-      {
-        data.ldlt.compute(NA);
-        switch(data.ldlt.info())
-        {
-          case Eigen::Success:
-            break;
-          case Eigen::NumericalIssue:
-            cerr<<"Error: Numerical issue."<<endl;
-            return false;
-          default:
-            cerr<<"Error: Other."<<endl;
-            return false;
-        }
-        data.solver_type = min_quad_with_fixed_data<T>::LDLT;
-      }else
-      {
-#ifdef MIN_QUAD_WITH_FIXED_CPP_DEBUG
-    cout<<"    lu"<<endl;
-#endif
-        // Resort to LU
-        // Bottleneck >1/2
-        data.lu.compute(NA);
-        //std::cout<<"NA=["<<std::endl<<NA<<std::endl<<"];"<<std::endl;
-        switch(data.lu.info())
-        {
-          case Eigen::Success:
-            break;
-          case Eigen::NumericalIssue:
-            cerr<<"Error: Numerical issue."<<endl;
-            return false;
-          case Eigen::InvalidInput:
-            cerr<<"Error: Invalid Input."<<endl;
-            return false;
-          default:
-            cerr<<"Error: Other."<<endl;
-            return false;
-        }
-        data.solver_type = min_quad_with_fixed_data<T>::LU;
-      }
-    }
-  }else
-  {
-#ifdef MIN_QUAD_WITH_FIXED_CPP_DEBUG
-    cout<<"    Aeq_li=false"<<endl;
-#endif
-    data.neq = neq;
-    const int nu = data.unknown.size();
-    //cout<<"nu: "<<nu<<endl;
-    //cout<<"neq: "<<neq<<endl;
-    //cout<<"nc: "<<nc<<endl;
-    //cout<<"    matrixR"<<endl;
-    SparseMatrix<T> AeqTR,AeqTQ;
-    AeqTR = data.AeqTQR.matrixR();
-    // This shouldn't be necessary
-    AeqTR.prune(0.0);
-#ifdef MIN_QUAD_WITH_FIXED_CPP_DEBUG
-    cout<<"    matrixQ"<<endl;
-#endif
-    // THIS IS ESSENTIALLY DENSE AND THIS IS BY FAR THE BOTTLENECK
-    // http://forum.kde.org/viewtopic.php?f=74&t=117500
-    AeqTQ = data.AeqTQR.matrixQ();
-#ifdef MIN_QUAD_WITH_FIXED_CPP_DEBUG
-    cout<<"    prune"<<endl;
-    cout<<"      nnz: "<<AeqTQ.nonZeros()<<endl;
-#endif
-    // This shouldn't be necessary
-    AeqTQ.prune(0.0);
-    //cout<<"AeqTQ: "<<AeqTQ.rows()<<" "<<AeqTQ.cols()<<endl;
-    //cout<<matlab_format(AeqTQ,"AeqTQ")<<endl;
-    //cout<<"    perms"<<endl;
-#ifdef MIN_QUAD_WITH_FIXED_CPP_DEBUG
-    cout<<"      nnz: "<<AeqTQ.nonZeros()<<endl;
-    cout<<"    perm"<<endl;
-#endif
-    SparseMatrix<double> I(neq,neq);
-    I.setIdentity();
-    data.AeqTE = data.AeqTQR.colsPermutation() * I;
-    data.AeqTET = data.AeqTQR.colsPermutation().transpose() * I;
-    assert(AeqTR.rows() == nu   && "#rows in AeqTR should match #unknowns");
-    assert(AeqTR.cols() == neq  && "#cols in AeqTR should match #constraints");
-    assert(AeqTQ.rows() == nu && "#rows in AeqTQ should match #unknowns");
-    assert(AeqTQ.cols() == nu && "#cols in AeqTQ should match #unknowns");
-    //cout<<"    slice"<<endl;
-#ifdef MIN_QUAD_WITH_FIXED_CPP_DEBUG
-    cout<<"    slice"<<endl;
-#endif
-    data.AeqTQ1 = AeqTQ.topLeftCorner(nu,nc);
-    data.AeqTQ1T = data.AeqTQ1.transpose().eval();
-    // ALREADY TRIM (Not 100% sure about this)
-    data.AeqTR1 = AeqTR.topLeftCorner(nc,nc);
-    data.AeqTR1T = data.AeqTR1.transpose().eval();
-    //cout<<"AeqTR1T.size() "<<data.AeqTR1T.rows()<<" "<<data.AeqTR1T.cols()<<endl;
-    // Null space
-    data.AeqTQ2 = AeqTQ.bottomRightCorner(nu,nu-nc);
-    data.AeqTQ2T = data.AeqTQ2.transpose().eval();
-#ifdef MIN_QUAD_WITH_FIXED_CPP_DEBUG
-    cout<<"    proj"<<endl;
-#endif
-    // Projected hessian
-    SparseMatrix<T> QRAuu = data.AeqTQ2T * Auu * data.AeqTQ2;
-    {
-#ifdef MIN_QUAD_WITH_FIXED_CPP_DEBUG
-      cout<<"    factorize"<<endl;
-#endif
-      // QRAuu should always be PD
-      data.llt.compute(QRAuu);
-      switch(data.llt.info())
-      {
-        case Eigen::Success:
-          break;
-        case Eigen::NumericalIssue:
-          cerr<<"Error: Numerical issue."<<endl;
-          return false;
-        default:
-          cerr<<"Error: Other."<<endl;
-          return false;
-      }
-      data.solver_type = min_quad_with_fixed_data<T>::QR_LLT;
-    }
-#ifdef MIN_QUAD_WITH_FIXED_CPP_DEBUG
-    cout<<"    smash"<<endl;
-#endif
-    // Known value multiplier
-    SparseMatrix<T> Auk;
-    slice(A,data.unknown,data.known,Auk);
-    SparseMatrix<T> Aku;
-    slice(A,data.known,data.unknown,Aku);
-    SparseMatrix<T> AkuT = Aku.transpose();
-    data.preY = Auk + AkuT;
-    // Needed during solve
-    data.Auu = Auu;
-    slice(Aeq,data.known,2,data.Aeqk);
-    assert(data.Aeqk.rows() == neq);
-    assert(data.Aeqk.cols() == data.known.size());
-  }
+  data.solver_type = min_quad_with_fixed_data<T>::LLT;
+  
   return true;
 }
 
@@ -468,7 +149,6 @@ IGL_INLINE bool igl::min_quad_with_fixed_solve(
     //std::cout<<"sol=["<<std::endl<<sol<<std::endl<<"];"<<std::endl;
     // Now sol contains sol/-0.5
     sol *= -0.5;
-	//sol *= 0.5;
     // Now sol contains solution
     // Place solution in Z
     for(int i = 0;i<(sol.rows()-neq);i++)
