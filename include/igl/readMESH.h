@@ -75,13 +75,17 @@ namespace igl
 	// mesh_file_name path of .mesh file
 	// Outputs:
 	// V eigen double matrix #V by 3
-	// T eigen int matrix #T by 5, extra element is the regional attribute
+	// Vf eigen double matrix #flesh V by 3
+	// Vb eigen double matrix #bone V by 3
+	// T eigen int matrix #T by 4
 	// F eigen int matrix #F by 3
 	// C eigen double matrix #F by 4
 	template <typename DerivedV, typename DerivedT, typename DerivedF, typename DerivedC>
 	IGL_INLINE bool readMESH(
 		const std::string mesh_file_name,
 		Eigen::PlainObjectBase<DerivedV>& V,
+		Eigen::PlainObjectBase<DerivedV>& Vf,
+		Eigen::PlainObjectBase<DerivedV>& Vb,
 		Eigen::PlainObjectBase<DerivedT>& T,
 		Eigen::PlainObjectBase<DerivedF>& F,
 		Eigen::PlainObjectBase<DerivedC>& C);
@@ -93,6 +97,8 @@ namespace igl
 	IGL_INLINE bool readMESH(
 		FILE * mesh_file,
 		Eigen::PlainObjectBase<DerivedV>& V,
+		Eigen::PlainObjectBase<DerivedV>& Vf,
+		Eigen::PlainObjectBase<DerivedV>& Vb,
 		Eigen::PlainObjectBase<DerivedT>& T,
 		Eigen::PlainObjectBase<DerivedF>& F,
 		Eigen::PlainObjectBase<DerivedC>& C);

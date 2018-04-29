@@ -12,8 +12,9 @@ namespace igl
   enum RBCEnergyType
   {
     RBC_ENERGY_TYPE_COROT = 0,
-    RBC_ENERGY_TYPE_DEFAULT = 1,
-    NUM_ARAP_ENERGY_TYPES = 2
+	RBC_ENERGY_TYPE_RBC = 1,
+    RBC_ENERGY_TYPE_DEFAULT = 2,
+    NUM_ARAP_ENERGY_TYPES = 3
   };
 }
 #endif

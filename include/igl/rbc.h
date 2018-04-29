@@ -11,6 +11,9 @@ namespace igl
 	struct RBCData
 	{
 		// n  #V
+		// nf #flesh V
+		// nb #bone V
+		// m  the number of independent rigid body
 		// G  #V list of group indices (1 to k) for each vertex, such that vertex i
 		//    is assigned to group G(i)
 		// energy type of energy to use
@@ -18,6 +21,8 @@ namespace igl
 		// after changing)
 		// f_ext #V by dim list of external forces
 		// vel #V by dim list of velocities
+		// B #V by (nf + 4m) 
+		// T 4m by 3
 		// h dynamics time step
 		// mu mu = k / (2 * (1 + v)) k is Young's modulus, v is poisson's ratio
 		// max_iter maximum inner iterations
@@ -26,23 +31,27 @@ namespace igl
 		// solver_data quadratic solver data
 		// b list of boundary indices into V
 		// dim dimension being used for solving
-		int n;
+		int n, nf, nb, m;
 		Eigen::VectorXi G;
 		Eigen::MatrixXi F;
 		RBCEnergyType energy;
 		bool with_dynamics;
-		Eigen::MatrixXd f_ext, vel;
+		Eigen::MatrixXd f_ext, vel, Ab, T;
 		double h;
 		double mu;
 		int max_iter;
 		Eigen::SparseMatrix<double> J, M;
 		Eigen::SparseMatrix<double> L;
+		Eigen::SparseMatrix<double> B, B_trans;
 		Eigen::MatrixXd SM; // restpose shape matrix
 		min_quad_with_fixed_data<double> solver_data;
 		Eigen::VectorXi b;
 		int dim;
 		RBCData():
 		n(0),
+		nf(0),
+		nb(0),
+		m(1),
 		G(),
 		energy(RBC_ENERGY_TYPE_DEFAULT),
 		with_dynamics(false),
@@ -75,6 +84,7 @@ namespace igl
 		typename Derivedb>
 	IGL_INLINE bool rbc_precomputation(
 		const Eigen::PlainObjectBase<DerivedV> & V,
+		const Eigen::PlainObjectBase<DerivedV> & Vb,
 		const Eigen::PlainObjectBase<DerivedF> & F,
 		const int dim,
 		const Eigen::PlainObjectBase<Derivedb> & b,

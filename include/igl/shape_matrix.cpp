@@ -32,6 +32,7 @@ IGL_INLINE void igl::shape_matrix(
   switch(energy)
   {
     case RBC_ENERGY_TYPE_COROT:
+	case RBC_ENERGY_TYPE_RBC:
 	case RBC_ENERGY_TYPE_DEFAULT:
       nr = m;
       break;

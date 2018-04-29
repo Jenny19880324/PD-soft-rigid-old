@@ -26,6 +26,7 @@ IGL_INLINE void igl::rbc_rhs(
   switch(energy)
   {
     case RBC_ENERGY_TYPE_COROT:
+	case RBC_ENERGY_TYPE_RBC:
       //nr = n;
       break;
     default:

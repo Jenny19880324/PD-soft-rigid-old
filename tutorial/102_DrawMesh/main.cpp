@@ -21,7 +21,7 @@
 
 bool vertex_pick_enabled = false;
 
-Eigen::MatrixXd V, U;
+Eigen::MatrixXd V, Vf, Vb, U;
 Eigen::MatrixXi T;
 Eigen::MatrixXi F;
 Eigen::MatrixXd C;
@@ -31,7 +31,7 @@ Eigen::Matrix<double, Eigen::Dynamic, 3> bc;
 Eigen::VectorXi b;
 double anim_t = 0.0;
 double anim_t_dir = 0.033;
-igl::RBCData rbc_data;
+igl::RBCData rbc_data; 
 
 
 struct SlicePlane {
@@ -246,7 +246,7 @@ bool mouse_move(igl::opengl::glfw::Viewer& viewer, int mouse_x, int mouse_y) {
 			}
 			viewer.data().set_vertices(U);
 			viewer.data().set_points(bc, Eigen::RowVector3d(1.0, 0.0, 0.0));
-			igl::rbc_precomputation(V, T, V.cols(), b, rbc_data);
+			igl::rbc_precomputation(V, Vb, T, V.cols(), b, rbc_data);
 			return true;
 		}
 	}
@@ -259,12 +259,12 @@ bool pre_draw(igl::opengl::glfw::Viewer &viewer)
 	using namespace Eigen;
 	using namespace std;
 
-	igl::rbc_solve(bc, rbc_data, U);
-	viewer.data().set_vertices(U);
-	viewer.data().compute_normals();
-
 	if (viewer.core.is_animating)
 	{
+		igl::rbc_solve(bc, rbc_data, U);
+		viewer.data().set_vertices(U);
+		viewer.data().compute_normals();
+
 		anim_t += anim_t_dir;
 	}
 	return false;
@@ -286,7 +286,7 @@ bool key_down(igl::opengl::glfw::Viewer &viewer, unsigned char key, int mods)
 int main(int argc, char *argv[])
 {
   // Load a mesh in MESH format
-  igl::readMESH(TUTORIAL_SHARED_PATH "/cube.mesh", V, T, F, C);
+  igl::readMESH(TUTORIAL_SHARED_PATH "/cube.mesh", V, Vf, Vb, T, F, C);
   U = V;
 
   // Init the viewer
@@ -394,6 +394,13 @@ int main(int argc, char *argv[])
 			  viewer.data().points.resize(0, 0);
 		  }
 	  }
+
+	  // material panel
+	  rbc_data.energy = igl::RBC_ENERGY_TYPE_RBC;
+	  if (ImGui::Combo("Material", (int *)(&rbc_data.energy), "PD material\0\RBC\0"))
+	  {
+		  igl::rbc_precomputation(V, Vb, T, V.cols(), b, rbc_data);
+	  }
   };
 
   // Register callbacks
@@ -430,7 +437,7 @@ int main(int argc, char *argv[])
 		  viewer.data().points.resize(0, 0);
 		  b.resize(0);
 		  bc.resize(0, 3);
-		  igl::rbc_precomputation(V, T, V.cols(), b, rbc_data);
+		  igl::rbc_precomputation(V, Vb, T, V.cols(), b, rbc_data);
 		  return true;
 	  }
 	  return false;
@@ -440,7 +447,7 @@ int main(int argc, char *argv[])
   //rbc_data.max_iter = 100;
   rbc_data.with_dynamics = true;
   //rbc_data.h = 0.033;
-  igl::rbc_precomputation(V, T, V.cols(), b, rbc_data);
+  igl::rbc_precomputation(V, Vb, T, V.cols(), b, rbc_data);
 
   // Plot the mesh
   viewer.data().set_mesh(V, F);

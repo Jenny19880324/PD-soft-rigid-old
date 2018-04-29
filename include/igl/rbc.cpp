@@ -11,6 +11,7 @@ template<
 	typename Derivedb>
 IGL_INLINE bool igl::rbc_precomputation(
 	const Eigen::PlainObjectBase<DerivedV> & V,
+	const Eigen::PlainObjectBase<DerivedV> & Vb,
 	const Eigen::PlainObjectBase<DerivedF> & F,
 	const int dim,
 	const Eigen::PlainObjectBase<Derivedb> & b,
@@ -21,7 +22,12 @@ IGL_INLINE bool igl::rbc_precomputation(
 	typedef typename DerivedV::Scalar Scalar;
 	// number of vertices
 	const int n = V.rows();
+	const int nb = Vb.rows();
+	const int nf = n - nb;
+
 	data.n = n;
+	data.nf = nf;
+	data.nb = nb;
 	assert((b.size() == 0 || b.maxCoeff() < n) && "b out of bounds");
 	assert((b.size() == 0 || b.minCoeff() >=0) && "b out of bounds");
 	// remember b
@@ -43,7 +49,7 @@ IGL_INLINE bool igl::rbc_precomputation(
 			case 3:
 				break;
 			case 4:
-				eff_energy = RBC_ENERGY_TYPE_COROT;
+				eff_energy = RBC_ENERGY_TYPE_RBC;
 				break;
 			default:
 				assert(false);
@@ -57,7 +63,7 @@ IGL_INLINE bool igl::rbc_precomputation(
 	
 	rbc_rhs(V, F, data.dim, eff_energy, data.J);
 	SparseMatrix<double> Q = L.eval();
-	
+
 	if (data.with_dynamics)
 	{
 		const double h = data.h;
@@ -70,6 +76,29 @@ IGL_INLINE bool igl::rbc_precomputation(
 		data.f_ext = MatrixXd::Zero(n, data.dim);
 		data.vel = MatrixXd::Zero(n, data.dim);
 	}
+
+	if (eff_energy == RBC_ENERGY_TYPE_RBC) {
+		data.Ab.resize(nb, 4 * data.m);
+		data.Ab << Vb, MatrixXd::Constant(nb, 1, 1);
+		data.B.resize(nf + nb, nf + 4 * data.m);
+		std::vector<Triplet<double>> B_IJV;
+		for (int i = 0; i < nf; i++) {
+			B_IJV.push_back(Triplet<double>(i, i, 1));
+		}
+		for (int i = 0; i < nb; i++) {
+			for (int j = 0; j < 4; j++) {
+				B_IJV.push_back(Triplet<double>(nf + i, nf + j, data.Ab(i, j)));
+			}
+		}
+		data.B.setFromTriplets(B_IJV.begin(), B_IJV.end());
+		data.B_trans = data.B.transpose();
+		Q = data.B_trans * Q * data.B;
+		
+		data.T.resize(4 * data.m, 3);
+		data.T.setZero();
+		data.T.block(0, 0, 3, 3) = MatrixXd::Identity(3, 3);
+	}
+
 	return min_quad_with_fixed_precompute(
 		Q, b, SparseMatrix<double>(), true, data.solver_data);
 }
@@ -146,6 +175,7 @@ IGL_INLINE bool igl::rbc_solve(
 			
 			Matrix<double, Eigen::Dynamic, 3> B = -data.J * R;
 			Matrix<double, Eigen::Dynamic, 3> Beq;
+			Matrix<double, Eigen::Dynamic, 3> q;
 			assert(B.rows() == data.n);
 			assert(B.cols() == data.dim);
 			
@@ -153,10 +183,23 @@ IGL_INLINE bool igl::rbc_solve(
 			{
 				B += Dl;
 			}
+
+			if (data.energy == RBC_ENERGY_TYPE_RBC) {
+				B = data.B_trans * B;
+			}
+
 			min_quad_with_fixed_solve(
 			data.solver_data,
 			B, bc, Beq,
-			U);
+			q);
+
+			if (data.energy == RBC_ENERGY_TYPE_RBC) {
+				U = data.B * q;
+			}
+			else {
+				U = q;
+			}
+
 			iter++;
 		}
 		if (data.with_dynamics)
@@ -171,5 +214,6 @@ template bool igl::rbc_solve<Eigen::Matrix<double, -1, -1, 0, -1, -1>, Eigen::Ma
 // generated from msvc error
 template bool igl::rbc_solve<Eigen::Matrix<double, -1, 3, 0, -1, 3>, Eigen::Matrix<double, -1, -1, 0, -1, -1> >(Eigen::PlainObjectBase<Eigen::Matrix<double, -1, 3, 0, -1, 3> > const &, struct igl::RBCData &, Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> > &);
 //
-template bool igl::rbc_precomputation<Eigen::Matrix<double, -1, -1, 0, -1, -1>, Eigen::Matrix<int, -1, -1, 0, -1, -1>, Eigen::Matrix<int, -1, 1, 0, -1, 1> >(Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> > const&, Eigen::PlainObjectBase<Eigen::Matrix<int, -1, -1, 0, -1, -1> > const&, int, Eigen::PlainObjectBase<Eigen::Matrix<int, -1, 1, 0, -1, 1> > const&, igl::RBCData&);
+template bool igl::rbc_precomputation<Eigen::Matrix<double, -1, -1, 0, -1, -1>, Eigen::Matrix<int, -1, -1, 0, -1, -1>, Eigen::Matrix<int, -1, 1, 0, -1, 1> >(Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> > const &, Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> > const &, Eigen::PlainObjectBase<Eigen::Matrix<int, -1, -1, 0, -1, -1> > const &, int, Eigen::PlainObjectBase<Eigen::Matrix<int, -1, 1, 0, -1, 1> > const &, struct igl::RBCData &);
+
 #endif
