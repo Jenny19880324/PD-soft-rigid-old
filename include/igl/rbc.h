@@ -38,7 +38,7 @@ namespace igl
 		bool with_dynamics;
 		Eigen::MatrixXd f_ext, vel, Ab, T;
 		double h;
-		double mu;
+		float mu;
 		int max_iter;
 		Eigen::SparseMatrix<double> J, M;
 		Eigen::SparseMatrix<double> L;
@@ -57,7 +57,7 @@ namespace igl
 		with_dynamics(false),
 		f_ext(),
 		h(1),
-		mu(1),
+		mu(1.0),
 		max_iter(10),
 		J(),
 		L(),

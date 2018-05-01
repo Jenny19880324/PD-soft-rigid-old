@@ -403,6 +403,23 @@ int main(int argc, char *argv[])
 	  }
   };
 
+  menu.callback_draw_custom_window = [&]()
+  {
+	// Define next window position + size
+	  ImGui::SetNextWindowPos(ImVec2(180.f * menu.menu_scaling(), 0), ImGuiSetCond_FirstUseEver);
+	  ImGui::SetNextWindowSize(ImVec2(200, 160), ImGuiSetCond_FirstUseEver);
+	  ImGui::Begin(
+		  "Simulation", nullptr
+	  );
+
+	  // Expose the same variable directly
+	  ImGui::PushItemWidth(-80);
+	  ImGui::DragFloat("mu", &rbc_data.mu, 0.0, 0.0, 3.0);
+	  ImGui::PopItemWidth();
+
+	  ImGui::End();
+  };
+
   // Register callbacks
   viewer.callback_mouse_move = &mouse_move;
   viewer.callback_pre_draw = &pre_draw;

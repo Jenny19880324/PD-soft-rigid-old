@@ -70,7 +70,8 @@ IGL_INLINE bool igl::rbc_precomputation(
 		assert(h != 0);
 		SparseMatrix<double> M;
 		massmatrix(V, F, MASSMATRIX_TYPE_DEFAULT, data.M);
-		SparseMatrix<double> DQ = 1./(h * h) * data.M;
+		const double dw = 1. / data.mu;
+		SparseMatrix<double> DQ = dw * 1./(h * h) * data.M;
 		Q += DQ;
 		// Dummy external forces
 		data.f_ext = MatrixXd::Zero(n, data.dim);
@@ -170,7 +171,8 @@ IGL_INLINE bool igl::rbc_solve(
 				"No mass matrix. Call rbc_precomputation if chaning with_dynamics");
 				const double h = data.h;
 				assert(h != 0);
-				Dl = 1./(h*h)*data.M*(-U0-h*data.vel) - data.f_ext;
+				const double dw = 1. / data.mu;
+				Dl = dw * 1./(h*h)*data.M*(-U0-h*data.vel) - data.f_ext;
 			}
 			
 			Matrix<double, Eigen::Dynamic, 3> B = -data.J * R;

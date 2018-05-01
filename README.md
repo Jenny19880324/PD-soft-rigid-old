@@ -265,3 +265,10 @@ page](https://github.com/libigl/libigl/issues).
 2017 Alec Jacobson, Daniele Panozzo, Christian Schüller, Olga Diamanti, Qingnan Zhou, Sebastian Koch, Jeremie Dumas, Amir Vaxman, Nico Pietroni, Stefan Brugger, Kenshi Takayama, Wenzel Jakob, Nikolas De Giorgis, Luigi Rocca, Leonardo Sacht, Kevin Walliman, Olga Sorkine-Hornung, and others.
 
 Please see individual files for appropriate copyright notices.
+
+
+UI  parameter
+bend a bar
+marquee selection
+larger mesh
+
