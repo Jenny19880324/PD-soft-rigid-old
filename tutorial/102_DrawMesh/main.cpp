@@ -272,14 +272,19 @@ bool mouse_move(igl::opengl::glfw::Viewer& viewer, int mouse_x, int mouse_y) {
 		marquee.to_y = mouse_y;
 		marquee.two_corners_set = true;
 		marquee_gl.dirty = true;
-		//marquee_gl.V_vbo << marquee.from_x, marquee.from_y, 0.,
-		//					marquee.to_x, marquee.from_y, 0.,
-		//					marquee.to_x, marquee.to_y, 0.,
-		//					marquee.from_x, marquee.to_y, 0.;
-		marquee_gl.V_vbo << -0.95, 0.95, 0.,
-			0.95, 0.95, 0.,
-			0.95, -0.95, 0.,
-							-1,-1, 0.;
+
+		float w= viewer.core.viewport(2);
+		float h = viewer.core.viewport(3);
+
+		float from_x = 2. * marquee.from_x / w - 1.;
+		float from_y = -2. * marquee.from_y / h + 1.;
+		float to_x = 2. * marquee.to_x / w - 1.;
+		float to_y = -2. * marquee.to_y / h + 1.;
+
+		marquee_gl.V_vbo << from_x, from_y, 0.,
+							to_x, from_y, 0.,
+							to_x, to_y, 0.,
+							from_x, to_y, 0.;
 		marquee_gl.bind();
 
 		return true;
@@ -467,7 +472,7 @@ int main(int argc, char *argv[])
   viewer.callback_mouse_move = &mouse_move;
   viewer.callback_pre_draw = &pre_draw;
   viewer.callback_key_down = &key_down;
-  viewer.callback_mouse_down = [](igl::opengl::glfw::Viewer &viewer, int mouse_x, int mouse_y)->bool
+  viewer.callback_mouse_down = [](igl::opengl::glfw::Viewer &viewer, int, int)->bool
   {
 	  if (vertex_pick_enabled) {
 		  int vid = -1;
@@ -491,8 +496,8 @@ int main(int argc, char *argv[])
 
 	  if (vertices_marquee_enabled) {
 		  marquee.one_corner_set = true;
-		  marquee.from_x = mouse_x;
-		  marquee.from_y = mouse_y;
+		  marquee.from_x = viewer.current_mouse_x;
+		  marquee.from_y = viewer.current_mouse_y;
 		  return true;
 	  }
 	  return false;
@@ -523,7 +528,7 @@ int main(int argc, char *argv[])
   viewer.callback_post_draw = [](igl::opengl::glfw::Viewer &viewer)
   {
 	  if (vertices_marquee_enabled && marquee.two_corners_set) {
-		  marquee_gl.draw(viewer.core.viewport);
+		  marquee_gl.draw();
 	  }
 	  return false;
   };

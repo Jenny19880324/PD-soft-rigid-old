@@ -22,12 +22,11 @@ IGL_INLINE void igl::opengl::MarqueeGL::init()
 	is_initialized = true;
 	std::string marquee_vertex_shader_string = 
 	R"(#version 150
-	uniform mat3 proj;
 	in vec3 position;
 	
 	void main()
 	{
-		gl_Position = vec4(proj * position, 1.0);
+		gl_Position = vec4(position, 1.0);
 	}
 	)";
 	
@@ -85,19 +84,9 @@ IGL_INLINE void igl::opengl::MarqueeGL::bind()
 }
 
 
-IGL_INLINE void igl::opengl::MarqueeGL::draw(const Eigen::Vector4f &viewport)
+IGL_INLINE void igl::opengl::MarqueeGL::draw()
 {
 	glDisable(GL_DEPTH_TEST);
-	GLint proji = glGetUniformLocation(shader_marquee, "proj");
-	float width = viewport(2);
-	float height = viewport(3);
-
-	Eigen::Matrix3f m = Eigen::Matrix3f::Identity();
-	//m << 1 / width, 0., -1,
-	//	0., -1. / height, 0.,
-	//	0., 0., 1.;
-	glUniformMatrix3fv(proji, 1, GL_FALSE, m.data());
-
 
 	double lw;
 	glGetDoublev(GL_LINE_WIDTH, &lw);

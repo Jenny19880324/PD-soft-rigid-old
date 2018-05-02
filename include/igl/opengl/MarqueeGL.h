@@ -49,7 +49,7 @@ namespace igl
 		IGL_INLINE void bind();
 		
 		// Draw the currently buffered marquee
-		IGL_INLINE void draw(const Eigen::Vector4f &viewport);
+		IGL_INLINE void draw();
 		
 		// Release the OpenGL buffer objects
 		IGL_INLINE void free_buffers();
