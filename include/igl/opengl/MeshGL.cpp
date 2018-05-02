@@ -204,6 +204,7 @@ R"(#version 150
   in vec3 position_eye;
   in vec3 normal_eye;
   uniform vec3 light_position_world;
+  uniform float lighting_factor;
   vec3 Ls = vec3 (1, 1, 1);
   vec3 Ld = vec3 (1, 1, 1);
   vec3 La = vec3 (1, 1, 1);
@@ -213,7 +214,6 @@ R"(#version 150
   in vec2 texcoordi;
   uniform sampler2D tex;
   uniform float specular_exponent;
-  uniform float lighting_factor;
   uniform float texture_factor;
   out vec4 outColor;
   void main()
@@ -241,17 +241,21 @@ R"(#version 150
 
   std::string overlay_vertex_shader_string =
 R"(#version 150
+
   uniform mat4 model;
   uniform mat4 view;
   uniform mat4 proj;
   in vec3 position;
   in vec3 color;
   out vec3 color_frag;
+  out vec3 position_eye;
+
 
   void main()
   {
+	position_eye = vec3 (view * model * vec4 (position, 1.0));
     gl_Position = proj * view * model * vec4 (position, 1.0);
-    color_frag = color;
+	color_frag = color;
   }
 )";
 
@@ -267,13 +271,43 @@ R"(#version 150
 
   std::string overlay_point_fragment_shader_string =
 R"(#version 150
+  uniform mat4 model;
+  uniform mat4 view;
+  uniform mat4 proj;
+  vec3 Ls = vec3 (1, 1, 1);
+  vec3 Ld = vec3 (1, 1, 1);
+  vec3 La = vec3 (0.1, 0.1, 0.1);
   in vec3 color_frag;
   out vec4 outColor;
+  in vec3 position_eye;
+  uniform vec3 light_position_world;
+  float specular_exponent = 250;
   void main()
   {
-    if (length(gl_PointCoord - vec2(0.5)) > 0.5)
-      discard;
-    outColor = vec4(color_frag, 1.0);
+	// calculate normal from texture coordinates
+	vec3 N;
+	N.xy = gl_PointCoord * 2.0 - vec2(1.0);
+	float mag = dot(N.xy, N.xy);
+	if (mag > 1.0) discard;
+	N.z = sqrt(1.0 - mag);
+
+	// calculate lighting
+    vec3 Ia = La * color_frag;    // ambient intensity
+
+    vec3 light_position_eye = vec3 (view * vec4 (light_position_world, 1.0));
+    vec3 vector_to_light_eye = light_position_eye - position_eye;
+    vec3 direction_to_light_eye = normalize (vector_to_light_eye);
+    float dot_prod = dot (direction_to_light_eye, N);
+    float clamped_dot_prod = max (dot_prod, 0.0);
+    vec3 Id = Ld * color_frag * clamped_dot_prod;    // Diffuse intensity
+
+    vec3 reflection_eye = reflect (-direction_to_light_eye, N);
+    vec3 surface_to_viewer_eye = normalize (-position_eye);
+    float dot_prod_specular = dot (reflection_eye, surface_to_viewer_eye);
+    dot_prod_specular = float(abs(dot_prod)==dot_prod) * max (dot_prod_specular, 0.0);
+    float specular_factor = pow (dot_prod_specular, specular_exponent);
+    vec3 Is = Ls * vec3(1.0) * specular_factor;    // specular intensity
+    outColor = vec4(Is + Id + Ia,0.9);
   }
 )";
 
