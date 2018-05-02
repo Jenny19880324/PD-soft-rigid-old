@@ -94,6 +94,9 @@ public:
     const Eigen::MatrixXd& P,
     const Eigen::MatrixXd& C);
   IGL_INLINE void add_points(const Eigen::MatrixXd& P,  const Eigen::MatrixXd& C);
+  IGL_INLINE void move_points(const Eigen::MatrixXd &P, const Eigen::MatrixXd& C);
+  IGL_INLINE void remove_points(const Eigen::MatrixXd &P);
+
   // Sets edges given a list of edge vertices and edge indices. In constrast
   // to `add_edges` this will (purposefully) clober existing edges.
   //

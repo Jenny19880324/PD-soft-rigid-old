@@ -31,7 +31,9 @@ Eigen::MatrixXd C;
 Eigen::MatrixXi visible_F;
 Eigen::MatrixXd visible_C;
 Eigen::Matrix<double, Eigen::Dynamic, 3> bc;
+Eigen::Matrix<double, Eigen::Dynamic, 3> temp_bc;
 Eigen::VectorXi b;
+Eigen::VectorXi temp_b;
 double anim_t = 0.0;
 double anim_t_dir = 0.033;
 igl::RBCData rbc_data; 
@@ -201,7 +203,7 @@ void marquee_select_vertices(
 	igl::opengl::glfw::Viewer &viewer, 
 	const Marquee &marquee, 
 	const Eigen::PlainObjectBase<DerivedV> &V,
-	std::vector<int> &selected_vertices)
+	Eigen::VectorXi &b)
 {
 	const float width = viewer.core.viewport(2);
 	const float height = viewer.core.viewport(3);
@@ -278,7 +280,8 @@ void marquee_select_vertices(
 		}
 
 		if (j == 4) {
-			selected_vertices.push_back(i);
+			b.conservativeResize(b.rows() + 1);
+			b.tail(1) << i;
 		}
 	}
 }
@@ -321,12 +324,12 @@ bool mouse_move(igl::opengl::glfw::Viewer& viewer, int mouse_x, int mouse_y) {
 		return true;
 	}
 
-	if (vertex_pick_enabled && b.rows() > 0) {
+	if (vertex_pick_enabled && temp_b.rows() > 0) {
 		Eigen::Vector3d cm = Eigen::Vector3d::Zero();
-		for (int i = 0; i < b.rows(); ++i) {
-			cm += U.row(b(i));
+		for (int i = 0; i < temp_b.rows(); ++i) {
+			cm += U.row(temp_b(i));
 		}
-		cm /= b.size();
+		cm /= temp_b.size();
 		Eigen::Vector3f normal = cm.cast<float>() - viewer.core.camera_eye ;
 
 		Eigen::Vector3f s, dir;
@@ -342,13 +345,19 @@ bool mouse_move(igl::opengl::glfw::Viewer& viewer, int mouse_x, int mouse_y) {
 			w = viewer.core.model.inverse() * w;
 			world_pos = w.head<3>();
 			Eigen::Vector3d delta = world_pos.cast<double>() - cm;
-			bc.resize(b.size(), 3);
-			for (int i = 0; i < b.size(); ++i) {
-				U.row(b(i)) += delta;
-				bc.row(i) = U.row(b(i));
+			temp_bc.resize(temp_b.rows(), Eigen::NoChange);
+			for (int i = 0; i < temp_b.size(); ++i) {
+				U.row(temp_b(i)) += delta;
+				temp_bc.row(i) = U.row(temp_b(i));
 			}
 			viewer.data().set_vertices(U);
-			viewer.data().set_points(bc, Eigen::RowVector3d(1.0, 0.0, 0.0));
+
+			if (b.rows() > bc.rows()) {
+				bc.conservativeResize(bc.rows() + temp_bc.rows(), 3);
+			}
+			viewer.data().move_points(temp_bc, Eigen::RowVector3d(1.0, 0.0, 0.0));
+			bc.block(bc.rows() - temp_bc.rows(), 0, temp_bc.rows(), 3) = temp_bc;
+
 			igl::rbc_precomputation(V, Vb, T, V.cols(), b, rbc_data);
 			return true;
 		}
@@ -372,14 +381,14 @@ bool mouse_move(igl::opengl::glfw::Viewer& viewer, int mouse_x, int mouse_y) {
 							to_x, from_y, 0.,
 							to_x, to_y, 0.,
 							from_x, to_y, 0.;
-
-		std::vector<int> selected_vertices;
-		marquee_select_vertices(viewer, marquee, U, selected_vertices);
-		Eigen::MatrixXd selected_V(selected_vertices.size(), 3);
-		for (int i = 0; i < selected_vertices.size(); i++) {
-			selected_V.row(i) = V.row(selected_vertices[i]);
+		b.resize(0);
+		bc.resize(0, 3);
+		marquee_select_vertices(viewer, marquee, U, b);
+		bc.resize(b.size(), 3);
+		for (int i = 0; i < b.size(); i++) {
+			bc.row(i) = V.row(b(i));
 		}
-		viewer.data().add_points(selected_V, Eigen::RowVector3d(1., 0., 0.));
+		viewer.data().set_points(bc, Eigen::RowVector3d(1., 0., 0.));
 		return true;
 	}
 	return false;
@@ -409,6 +418,13 @@ bool key_down(igl::opengl::glfw::Viewer &viewer, unsigned char key, int mods)
 	{
 	case ' ':
 		viewer.core.is_animating = !viewer.core.is_animating;
+		return true;
+	case 'H':
+	case 'h':
+		if (bc.rows() > 0) {
+			viewer.data().set_points(bc, Eigen::RowVector3d(0., 1., 0.));
+			igl::rbc_precomputation(V, Vb, T, V.cols(), b, rbc_data);
+		}
 		return true;
 	}
 	return false;
@@ -577,7 +593,6 @@ int main(int argc, char *argv[])
   {
 	  if (vertex_pick_enabled) {
 		  int vid = -1;
-		  Eigen::Vector3f bc;
 		  // Cast a ray in the view direction starting from the mouse position
 		  double x = viewer.current_mouse_x;
 		  double y = viewer.core.viewport(3) - viewer.current_mouse_y;
@@ -588,8 +603,10 @@ int main(int argc, char *argv[])
 			  viewer.core.viewport,
 			  U, F, vid)) {
 			  viewer.data().add_points(U.row(vid), Eigen::RowVector3d(1., 0., 0.));
-			  b.resize(b.rows() + 1);
-			  b.tail<1>() << vid;
+			  temp_b.resize(temp_b.rows() + 1);
+			  temp_b.tail<1>() << vid;
+			  b.conservativeResize(b.rows() + temp_b.rows());
+			  b.tail(temp_b.rows()) << temp_b;
 			  return true;
 
 		  }
@@ -607,9 +624,11 @@ int main(int argc, char *argv[])
   viewer.callback_mouse_up = [](igl::opengl::glfw::Viewer &viewer, int, int)->bool
   {
 	  if (vertex_pick_enabled) {
-		  viewer.data().points.resize(0, 0);
-		  b.resize(0);
-		  bc.resize(0, 3);
+		  b.conservativeResize(b.rows() - temp_b.rows());
+		  bc.conservativeResize(bc.rows() - temp_bc.rows(), 3);
+		  viewer.data().remove_points(temp_bc);
+		  temp_b.resize(0);
+		  temp_bc.resize(0, 3);
 		  igl::rbc_precomputation(V, Vb, T, V.cols(), b, rbc_data);
 		  return true;
 	  }
