@@ -196,6 +196,93 @@ bool intersect_plane(
 }
 
 
+template <typename DerivedV>
+void marquee_select_vertices(
+	igl::opengl::glfw::Viewer &viewer, 
+	const Marquee &marquee, 
+	const Eigen::PlainObjectBase<DerivedV> &V,
+	std::vector<int> &selected_vertices)
+{
+	const float width = viewer.core.viewport(2);
+	const float height = viewer.core.viewport(3);
+
+	float from_x = (float)marquee.from_x;
+	float from_y = (float)marquee.from_y;
+	float to_x = (float)marquee.to_x;
+	float to_y = (float)marquee.to_y;
+
+	const Eigen::Matrix4f model = viewer.core.model;
+	const Eigen::Matrix4f view = viewer.core.view;
+	const Eigen::Matrix4f proj = viewer.core.proj;
+
+	const Eigen::Matrix4f view_model = view * model;
+	const Eigen::Matrix4f view_model_inv = view_model.inverse();
+	float dnear = viewer.core.camera_dnear;
+	float dfar = viewer.core.camera_dfar;
+	const Eigen::Vector3f eye = viewer.core.camera_eye;
+	float ratio = width / height;
+
+	Eigen::Vector3f screen_points[4] = {
+		Eigen::Vector3f(from_x, to_y,   1.),
+		Eigen::Vector3f(from_x, from_y, 1.),
+		Eigen::Vector3f(to_x,   from_y, 1.),
+		Eigen::Vector3f(to_x,   to_y,   1.)
+	};
+
+	Eigen::Matrix3f mat; // screen space to canonical space
+	mat << 2. / width, 0., -1.,
+			0., -2. / height, 1.,
+			0., 0., 1.;
+
+	for (int i = 0; i < 4; ++i) {
+		screen_points[i] = mat * screen_points[i];
+		screen_points[i].z() = -1. / std::tan(viewer.core.camera_view_angle / 360.0f * M_PI);
+	}
+
+	// 8 points of frustum
+	Eigen::Vector3f frustum_points[8];
+	Eigen::Vector3f t3;
+	Eigen::Vector4f t4;
+	for (int i = 0; i < 4; i++) {
+		Eigen::Vector3f d = screen_points[i];
+		float t = dnear / abs(d.z());
+		t3 = t * d;
+		t4 << ratio * t3.x(), t3.y(), t3.z(), 1.0;
+		t4 = view_model_inv * t4;
+		frustum_points[i * 2] << t4.x() / t4.w(), t4.y() / t4.w(), t4.z() / t4.w();
+
+		t = dfar / abs(d.z());
+		t3 = t * d;
+		t4 << ratio * t3.x(), t3.y(), t3.z(), 1.0;
+		t4 = view_model_inv * t4;
+		frustum_points[i * 2 + 1] << t4.x() / t4.w(), t4.y() / t4.w(), t4.z() / t4.w();
+	}
+
+	// frustum normals
+	Eigen::Vector3f frustum_normals[4];
+	for (int i = 0; i < 4; ++i) {
+		frustum_normals[i] = (frustum_points[i * 2] - frustum_points[i * 2 + 1]).cross(
+			frustum_points[(i * 2 + 2) % 8] - frustum_points[(i * 2 + 3) % 8]);
+		frustum_normals[i].normalize();
+	}
+
+	// Check which points are within the frustum formed by the selected rectangle
+	for (int i = 0; i < V.rows(); ++i) {
+		Eigen::Vector3f p = V.row(i).cast<float>();
+		int j;
+		for (j = 0; j < 4; ++j) {
+			float dot_product = (p - frustum_points[j * 2]).dot(frustum_normals[j]);
+			if (dot_product >= 0) {
+				break;
+			}
+		}
+
+		if (j == 4) {
+			selected_vertices.push_back(i);
+		}
+	}
+}
+
 bool mouse_move(igl::opengl::glfw::Viewer& viewer, int mouse_x, int mouse_y) {
 	if (slice_plane.active && viewer.down) {
 		igl::trackball(
@@ -285,8 +372,14 @@ bool mouse_move(igl::opengl::glfw::Viewer& viewer, int mouse_x, int mouse_y) {
 							to_x, from_y, 0.,
 							to_x, to_y, 0.,
 							from_x, to_y, 0.;
-		marquee_gl.bind();
 
+		std::vector<int> selected_vertices;
+		marquee_select_vertices(viewer, marquee, U, selected_vertices);
+		Eigen::MatrixXd selected_V(selected_vertices.size(), 3);
+		for (int i = 0; i < selected_vertices.size(); i++) {
+			selected_V.row(i) = V.row(selected_vertices[i]);
+		}
+		viewer.data().add_points(selected_V, Eigen::RowVector3d(1., 0., 0.));
 		return true;
 	}
 	return false;
@@ -429,17 +522,25 @@ int main(int argc, char *argv[])
 		  if (ImGui::Checkbox("single vertex", &vertex_pick_enabled)) {
 		  }
 		  if (ImGui::Checkbox("marquee vertices", &vertices_marquee_enabled)) {
-			  if (vertices_marquee_enabled) {
+			  static bool initialized = false;
+			  if (!initialized) {
 				  marquee_gl.init();
+				  initialized = true;
 			  }
-			  else {
-				  marquee_gl.free();
-			  }
-			  
+				// should call marquee_gl.free() somewhere.
 		  }
 
 		  if (ImGui::Button("clear")) {
+			  marquee.one_corner_set = false;
+			  marquee.two_corners_set = false;
+			  marquee.from_x = -1;
+			  marquee.from_y = -1;
+			  marquee.to_x = -1;
+			  marquee.to_y = -1;
 			  viewer.data().points.resize(0, 0);
+			  b.resize(0);
+			  bc.resize(0, 3);
+			  igl::rbc_precomputation(V, Vb, T, V.cols(), b, rbc_data);
 		  }
 	  }
 
@@ -516,10 +617,6 @@ int main(int argc, char *argv[])
 	  if (vertices_marquee_enabled) {
 		  marquee.one_corner_set = false;
 		  marquee.two_corners_set = false;
-		  marquee.from_x = -1;
-		  marquee.from_y = -1;
-		  marquee.to_x   = -1;
-		  marquee.to_y   = -1;
 		  return true;
 	  }
 	  return false;
@@ -528,6 +625,7 @@ int main(int argc, char *argv[])
   viewer.callback_post_draw = [](igl::opengl::glfw::Viewer &viewer)
   {
 	  if (vertices_marquee_enabled && marquee.two_corners_set) {
+		  marquee_gl.bind();
 		  marquee_gl.draw();
 	  }
 	  return false;

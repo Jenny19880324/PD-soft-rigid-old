@@ -86,14 +86,14 @@ IGL_INLINE void igl::opengl::MarqueeGL::bind()
 
 IGL_INLINE void igl::opengl::MarqueeGL::draw()
 {
-	glDisable(GL_DEPTH_TEST);
+	//glDisable(GL_DEPTH_TEST);
 
 	double lw;
 	glGetDoublev(GL_LINE_WIDTH, &lw);
 	glLineWidth(1);
 	glDrawArrays(GL_LINE_LOOP, 0, 4);
 	glLineWidth(lw);
-	glEnable(GL_DEPTH_TEST);
+	//glEnable(GL_DEPTH_TEST);
 }
 
 

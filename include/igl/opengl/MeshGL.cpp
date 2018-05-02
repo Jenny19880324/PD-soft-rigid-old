@@ -255,6 +255,7 @@ R"(#version 150
   {
 	position_eye = vec3 (view * model * vec4 (position, 1.0));
     gl_Position = proj * view * model * vec4 (position, 1.0);
+	gl_Position.z = gl_Position.z - 0.02; // make the sphere shown on top of the mesh
 	color_frag = color;
   }
 )";
