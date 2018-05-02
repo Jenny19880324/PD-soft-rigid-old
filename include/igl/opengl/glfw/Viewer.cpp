@@ -856,7 +856,7 @@ namespace glfw
     }
     for(int i = 0;i<data_list.size();i++)
     {
-      core.draw(data_list[i]);
+      //core.draw(data_list[i]);
     }
 	if (slice_enabled) {
 		core.draw(slice_plane);

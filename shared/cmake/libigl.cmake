@@ -23,6 +23,7 @@ option(LIBIGL_WITH_LIM               "Use LIM"            ON)
 option(LIBIGL_WITH_MATLAB            "Use Matlab"         "${Matlab_FOUND}")
 option(LIBIGL_WITH_MOSEK             "Use MOSEK"          "${MOSEK_FOUND}")
 option(LIBIGL_WITH_OPENGL            "Use OpenGL"         "${OPENGL_FOUND}")
+option(LIBIGL_WITH_OPENGL2           "Use OpenGL2"        "${OPENGL_FOUND}")
 option(LIBIGL_WITH_OPENGL_GLFW       "Use GLFW"           "${OPENGL_FOUND}")
 option(LIBIGL_WITH_OPENGL_GLFW_IMGUI "Use ImGui"          OFF)
 option(LIBIGL_WITH_PNG               "Use PNG"            ON)
@@ -302,6 +303,23 @@ if(LIBIGL_WITH_OPENGL)
 endif()
 
 ################################################################################
+### Compile the opengl2 parts ###
+
+if(LIBIGL_WITH_OPENGL2)
+  # OpenGL module
+  find_package(OpenGL REQUIRED)
+  compile_igl_module("opengl2")
+  target_link_libraries(igl_opengl2 ${IGL_SCOPE} ${OPENGL_LIBRARIES})
+  target_include_directories(igl_opengl2 SYSTEM ${IGL_SCOPE} ${OPENGL_INCLUDE_DIR})
+  
+    # glad module
+  if(NOT TARGET glad)
+    add_subdirectory(${LIBIGL_EXTERNAL}/glad glad)
+  endif()
+  target_link_libraries(igl_opengl2 ${IGL_SCOPE} glad)
+endif()
+
+################################################################################
 ### Compile the GLFW part ###
 
 if(LIBIGL_WITH_OPENGL_GLFW)
@@ -315,7 +333,7 @@ if(LIBIGL_WITH_OPENGL_GLFW)
       set(GLFW_INSTALL OFF CACHE BOOL " " FORCE)
       add_subdirectory(${LIBIGL_EXTERNAL}/glfw glfw)
     endif()
-    target_link_libraries(igl_opengl_glfw ${IGL_SCOPE} igl_opengl glfw)
+    target_link_libraries(igl_opengl_glfw ${IGL_SCOPE} igl_opengl igl_opengl2 glfw)
   endif()
 endif()
 

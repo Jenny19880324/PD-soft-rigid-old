@@ -4,9 +4,11 @@
 #include <igl/unproject_ray.h>
 #include <igl/opengl/glfw/imgui/ImGuiMenu.h>
 #include <igl/opengl/glfw/imgui/ImGuiHelpers.h>
+#include <igl/opengl2/draw_rectangular_marquee.h>
 #include <imgui/imgui.h>
 #include <igl/opengl/glfw/Viewer.h>
 #include <igl/opengl/MeshGL.h>
+#include <igl/opengl/MarqueeGL.h>
 #include <igl/unproject_onto_mesh.h>
 #include <igl/colon.h>
 #include <igl/directed_edge_orientations.h>
@@ -20,6 +22,7 @@
 #include "tutorial_shared_path.h"
 
 bool vertex_pick_enabled = false;
+bool vertices_marquee_enabled = false;
 
 Eigen::MatrixXd V, Vf, Vb, U;
 Eigen::MatrixXi T;
@@ -32,6 +35,19 @@ Eigen::VectorXi b;
 double anim_t = 0.0;
 double anim_t_dir = 0.033;
 igl::RBCData rbc_data; 
+igl::opengl::MarqueeGL marquee_gl;
+
+struct Marquee
+{
+	bool one_corner_set  = false;
+	bool two_corners_set = false;
+	int from_x;
+	int from_y;
+	int to_x;
+	int to_y;
+
+} marquee;
+
 
 
 struct SlicePlane {
@@ -250,6 +266,24 @@ bool mouse_move(igl::opengl::glfw::Viewer& viewer, int mouse_x, int mouse_y) {
 			return true;
 		}
 	}
+	
+	if (vertices_marquee_enabled && marquee.one_corner_set) {
+		marquee.to_x = mouse_x;
+		marquee.to_y = mouse_y;
+		marquee.two_corners_set = true;
+		marquee_gl.dirty = true;
+		//marquee_gl.V_vbo << marquee.from_x, marquee.from_y, 0.,
+		//					marquee.to_x, marquee.from_y, 0.,
+		//					marquee.to_x, marquee.to_y, 0.,
+		//					marquee.from_x, marquee.to_y, 0.;
+		marquee_gl.V_vbo << -0.95, 0.95, 0.,
+			0.95, 0.95, 0.,
+			0.95, -0.95, 0.,
+							-1,-1, 0.;
+		marquee_gl.bind();
+
+		return true;
+	}
 	return false;
 }
 
@@ -389,6 +423,15 @@ int main(int argc, char *argv[])
 	  if (ImGui::CollapsingHeader("pick", ImGuiTreeNodeFlags_DefaultOpen)) {
 		  if (ImGui::Checkbox("single vertex", &vertex_pick_enabled)) {
 		  }
+		  if (ImGui::Checkbox("marquee vertices", &vertices_marquee_enabled)) {
+			  if (vertices_marquee_enabled) {
+				  marquee_gl.init();
+			  }
+			  else {
+				  marquee_gl.free();
+			  }
+			  
+		  }
 
 		  if (ImGui::Button("clear")) {
 			  viewer.data().points.resize(0, 0);
@@ -424,7 +467,7 @@ int main(int argc, char *argv[])
   viewer.callback_mouse_move = &mouse_move;
   viewer.callback_pre_draw = &pre_draw;
   viewer.callback_key_down = &key_down;
-  viewer.callback_mouse_down = [](igl::opengl::glfw::Viewer &viewer, int, int)->bool
+  viewer.callback_mouse_down = [](igl::opengl::glfw::Viewer &viewer, int mouse_x, int mouse_y)->bool
   {
 	  if (vertex_pick_enabled) {
 		  int vid = -1;
@@ -445,6 +488,13 @@ int main(int argc, char *argv[])
 
 		  }
 	  }
+
+	  if (vertices_marquee_enabled) {
+		  marquee.one_corner_set = true;
+		  marquee.from_x = mouse_x;
+		  marquee.from_y = mouse_y;
+		  return true;
+	  }
 	  return false;
   };
 
@@ -456,6 +506,24 @@ int main(int argc, char *argv[])
 		  bc.resize(0, 3);
 		  igl::rbc_precomputation(V, Vb, T, V.cols(), b, rbc_data);
 		  return true;
+	  }
+
+	  if (vertices_marquee_enabled) {
+		  marquee.one_corner_set = false;
+		  marquee.two_corners_set = false;
+		  marquee.from_x = -1;
+		  marquee.from_y = -1;
+		  marquee.to_x   = -1;
+		  marquee.to_y   = -1;
+		  return true;
+	  }
+	  return false;
+  };
+
+  viewer.callback_post_draw = [](igl::opengl::glfw::Viewer &viewer)
+  {
+	  if (vertices_marquee_enabled && marquee.two_corners_set) {
+		  marquee_gl.draw(viewer.core.viewport);
 	  }
 	  return false;
   };
