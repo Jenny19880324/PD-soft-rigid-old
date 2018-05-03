@@ -115,6 +115,10 @@ IGL_INLINE bool igl::rbc_solve(
 	{
 		using namespace Eigen;
 		using namespace std;
+		if (data.b.size() != bc.rows()) {
+			std::cout << "data.b.size() = " << data.b.size() << std::endl;
+			std::cout << "bc.rows()     = " << bc.rows() << std::endl;
+		}
 		assert(data.b.size() == bc.rows());
 		if (bc.size() > 0)
 		{

@@ -23,6 +23,7 @@
 
 bool vertex_pick_enabled = false;
 bool vertices_marquee_enabled = false;
+bool vertices_move_enabled = false;
 
 Eigen::MatrixXd V, Vf, Vb, U;
 Eigen::MatrixXi T;
@@ -34,6 +35,7 @@ Eigen::Matrix<double, Eigen::Dynamic, 3> bc;
 Eigen::Matrix<double, Eigen::Dynamic, 3> temp_bc;
 Eigen::VectorXi b;
 Eigen::VectorXi temp_b;
+int pressed_b;
 double anim_t = 0.0;
 double anim_t_dir = 0.033;
 igl::RBCData rbc_data; 
@@ -330,7 +332,9 @@ bool mouse_move(igl::opengl::glfw::Viewer& viewer, int mouse_x, int mouse_y) {
 			cm += U.row(temp_b(i));
 		}
 		cm /= temp_b.size();
-		Eigen::Vector3f normal = cm.cast<float>() - viewer.core.camera_eye ;
+		cm = U.row(pressed_b);
+		Eigen::Vector3f normal = cm.cast<float>() - viewer.core.camera_eye;
+
 
 		Eigen::Vector3f s, dir;
 		Eigen::Vector3f world_pos;
@@ -381,15 +385,51 @@ bool mouse_move(igl::opengl::glfw::Viewer& viewer, int mouse_x, int mouse_y) {
 							to_x, from_y, 0.,
 							to_x, to_y, 0.,
 							from_x, to_y, 0.;
-		b.resize(0);
-		bc.resize(0, 3);
-		marquee_select_vertices(viewer, marquee, U, b);
-		bc.resize(b.size(), 3);
-		for (int i = 0; i < b.size(); i++) {
-			bc.row(i) = V.row(b(i));
+
+		viewer.data().remove_points(temp_bc);
+		temp_b.resize(0);
+		temp_bc.resize(0, 3);
+		marquee_select_vertices(viewer, marquee, U, temp_b);
+		temp_bc.resize(temp_b.size(), 3);
+		for (int i = 0; i < temp_b.size(); i++) {
+			temp_bc.row(i) = V.row(temp_b(i));
 		}
-		viewer.data().set_points(bc, Eigen::RowVector3d(1., 0., 0.));
+
+		viewer.data().add_points(temp_bc, Eigen::RowVector3d(1.0, 0.0, 0.0));
 		return true;
+	}
+	
+	if (vertices_move_enabled && (!marquee.one_corner_set) && temp_b.rows() > 0 && temp_bc.rows() > 0)
+	{
+		Eigen::Vector3d pressed_V = U.row(pressed_b);
+		Eigen::Vector3f normal = pressed_V.cast<float>() - viewer.core.camera_eye;
+
+		Eigen::Vector3f s, dir;
+		Eigen::Vector3f world_pos;
+		igl::unproject_ray(Eigen::Vector2f(mouse_x, viewer.core.viewport(3) - mouse_y), viewer.core.view, viewer.core.proj, viewer.core.viewport, s, dir);
+		dir.normalize(); normal.normalize();
+		Eigen::Vector4f world_pressed_V;
+		world_pressed_V << pressed_V.cast<float>(), 1.0;
+		world_pressed_V = viewer.core.model * world_pressed_V;
+		if (intersect_plane(normal, world_pressed_V.head<3>(), viewer.core.camera_eye, dir, world_pos)) {
+			Eigen::Vector4f w;
+			w << world_pos, 1.0;
+			w = viewer.core.model.inverse() * w;
+			world_pos = w.head<3>();
+			Eigen::Vector3d delta = world_pos.cast<double>() - pressed_V;
+			temp_bc.resize(temp_b.rows(), Eigen::NoChange);
+			for (int i = 0; i < temp_b.size(); ++i) {
+				U.row(temp_b(i)) += delta;
+				temp_bc.row(i) = U.row(temp_b(i));
+			}
+			viewer.data().set_vertices(U);
+
+			viewer.data().move_points(temp_bc, Eigen::RowVector3d(1.0, 0.0, 0.0));
+			bc.block(bc.rows() - temp_bc.rows(), 0, temp_bc.rows(), 3) = temp_bc;
+
+			igl::rbc_precomputation(V, Vb, T, V.cols(), b, rbc_data);
+			return true;
+		}
 	}
 	return false;
 }
@@ -421,9 +461,16 @@ bool key_down(igl::opengl::glfw::Viewer &viewer, unsigned char key, int mods)
 		return true;
 	case 'H':
 	case 'h':
-		if (bc.rows() > 0) {
+		if ((temp_b.rows() > 0) && (temp_bc.rows() > 0)) {
+			bc.conservativeResize(bc.rows() + temp_bc.rows(), Eigen::NoChange);
+			b.conservativeResize(b.rows() + temp_b.rows());
+			bc.block(bc.rows() - temp_bc.rows(), 0, temp_bc.rows(), 3) = temp_bc;
+			b.tail(temp_b.rows()) << temp_b;
+
 			viewer.data().set_points(bc, Eigen::RowVector3d(0., 1., 0.));
 			igl::rbc_precomputation(V, Vb, T, V.cols(), b, rbc_data);
+			temp_b.resize(0);
+			temp_bc.resize(0, 3);
 		}
 		return true;
 	}
@@ -556,6 +603,8 @@ int main(int argc, char *argv[])
 			  viewer.data().points.resize(0, 0);
 			  b.resize(0);
 			  bc.resize(0, 3);
+			  temp_b.resize(0);
+			  temp_bc.resize(0, 3);
 			  igl::rbc_precomputation(V, Vb, T, V.cols(), b, rbc_data);
 		  }
 	  }
@@ -607,12 +656,38 @@ int main(int argc, char *argv[])
 			  temp_b.tail<1>() << vid;
 			  b.conservativeResize(b.rows() + temp_b.rows());
 			  b.tail(temp_b.rows()) << temp_b;
+			  pressed_b = vid;
 			  return true;
 
 		  }
 	  }
 
 	  if (vertices_marquee_enabled) {
+		  if (temp_b.rows() > 0 && temp_bc.rows() > 0) {
+			  int vid = -1;
+			  // Cast a ray in the view direction starting from the mouse position
+			  double x = viewer.current_mouse_x;
+			  double y = viewer.core.viewport(3) - viewer.current_mouse_y;
+			  if (igl::unproject_onto_mesh(
+				  Eigen::Vector2f(x, y),
+				  viewer.core.view * viewer.core.model,
+				  viewer.core.proj,
+				  viewer.core.viewport,
+				  U, F, vid)) {
+				  for (int i = 0; i < temp_b.rows(); i++) {
+					  if (vid == temp_b(i)) {
+						  vertices_move_enabled = true;
+						  pressed_b = vid;
+						  b.conservativeResize(b.rows() + temp_b.rows());
+						  b.tail(temp_b.rows()) << temp_b;
+						  bc.conservativeResize(bc.rows() + temp_bc.rows(), Eigen::NoChange);
+						  igl::rbc_precomputation(V, Vb, T, V.cols(), b, rbc_data);
+						  return true;
+					  }
+				  }
+			  }
+		  }
+		  vertices_move_enabled = false;
 		  marquee.one_corner_set = true;
 		  marquee.from_x = viewer.current_mouse_x;
 		  marquee.from_y = viewer.current_mouse_y;
@@ -625,7 +700,7 @@ int main(int argc, char *argv[])
   {
 	  if (vertex_pick_enabled) {
 		  b.conservativeResize(b.rows() - temp_b.rows());
-		  bc.conservativeResize(bc.rows() - temp_bc.rows(), 3);
+		  bc.conservativeResize(bc.rows() - temp_bc.rows(), Eigen::NoChange);
 		  viewer.data().remove_points(temp_bc);
 		  temp_b.resize(0);
 		  temp_bc.resize(0, 3);
@@ -636,6 +711,17 @@ int main(int argc, char *argv[])
 	  if (vertices_marquee_enabled) {
 		  marquee.one_corner_set = false;
 		  marquee.two_corners_set = false;
+
+		  if (vertices_move_enabled) {
+			  b.conservativeResize(b.rows() - temp_b.rows());
+			  bc.conservativeResize(bc.rows() - temp_bc.rows(), 3);
+			  viewer.data().remove_points(temp_bc);
+			  temp_b.resize(0);
+			  temp_bc.resize(0, 3);
+			  igl::rbc_precomputation(V, Vb, T, V.cols(), b, rbc_data);
+			  vertices_move_enabled = false;
+		  }
+
 		  return true;
 	  }
 	  return false;
