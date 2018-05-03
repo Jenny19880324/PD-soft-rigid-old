@@ -4,11 +4,11 @@
 #include <igl/unproject_ray.h>
 #include <igl/opengl/glfw/imgui/ImGuiMenu.h>
 #include <igl/opengl/glfw/imgui/ImGuiHelpers.h>
-#include <igl/opengl2/draw_rectangular_marquee.h>
 #include <imgui/imgui.h>
 #include <igl/opengl/glfw/Viewer.h>
 #include <igl/opengl/MeshGL.h>
 #include <igl/opengl/MarqueeGL.h>
+#include <igl/opengl/FanGL.h>
 #include <igl/unproject_onto_mesh.h>
 #include <igl/colon.h>
 #include <igl/directed_edge_orientations.h>
@@ -19,11 +19,13 @@
 #include <igl/deform_skeleton.h>
 #include <igl/dqs.h>
 #include <igl/rbc.h>
+#include <GLFW/glfw3.h>
 #include "tutorial_shared_path.h"
 
 bool vertex_pick_enabled = false;
 bool vertices_marquee_enabled = false;
 bool vertices_move_enabled = false;
+bool vertices_rotate_enabled = false;
 
 Eigen::MatrixXd V, Vf, Vb, U;
 Eigen::MatrixXi T;
@@ -40,6 +42,7 @@ double anim_t = 0.0;
 double anim_t_dir = 0.033;
 igl::RBCData rbc_data; 
 igl::opengl::MarqueeGL marquee_gl;
+igl::opengl::FanGL fan_gl;
 
 struct Marquee
 {
@@ -51,6 +54,16 @@ struct Marquee
 	int to_y;
 
 } marquee;
+
+struct Fan
+{
+	bool center_set = false;
+	bool first_point_on_circumstance_set = false;
+	bool second_point_on_circumstance_set = false;
+	Eigen::Vector2f center;
+	Eigen::Vector2f first_point_on_circumstance;
+	Eigen::Vector2f second_point_on_circumstance;
+} fan;
 
 
 
@@ -367,35 +380,56 @@ bool mouse_move(igl::opengl::glfw::Viewer& viewer, int mouse_x, int mouse_y) {
 		}
 	}
 	
-	if (vertices_marquee_enabled && marquee.one_corner_set) {
-		marquee.to_x = mouse_x;
-		marquee.to_y = mouse_y;
-		marquee.two_corners_set = true;
-		marquee_gl.dirty = true;
+	if (vertices_rotate_enabled && temp_b.rows() > 0 && temp_bc.rows() > 0) {
+		if (fan.center_set && (fan.first_point_on_circumstance_set == false)) {
+			fan.first_point_on_circumstance(0) = mouse_x;
+			fan.first_point_on_circumstance(1) = mouse_y;
+			fan_gl.dirty = true;
 
-		float w= viewer.core.viewport(2);
-		float h = viewer.core.viewport(3);
+			float v0_x = fan.center.x();
+			float v0_y = fan.center.y();
+			float v1_x = fan.first_point_on_circumstance.x();
+			float v1_y = fan.first_point_on_circumstance.y();
 
-		float from_x = 2. * marquee.from_x / w - 1.;
-		float from_y = -2. * marquee.from_y / h + 1.;
-		float to_x = 2. * marquee.to_x / w - 1.;
-		float to_y = -2. * marquee.to_y / h + 1.;
+			float w = viewer.core.viewport(2);
+			float h = viewer.core.viewport(3);
 
-		marquee_gl.V_vbo << from_x, from_y, 0.,
-							to_x, from_y, 0.,
-							to_x, to_y, 0.,
-							from_x, to_y, 0.;
+			fan_gl.proj << 2.f / w, 0.f, -1.f,
+				0.f, -2.f / h, 1.f,
+				0.f, 0.f, 1.f;
 
-		viewer.data().remove_points(temp_bc);
-		temp_b.resize(0);
-		temp_bc.resize(0, 3);
-		marquee_select_vertices(viewer, marquee, U, temp_b);
-		temp_bc.resize(temp_b.size(), 3);
-		for (int i = 0; i < temp_b.size(); i++) {
-			temp_bc.row(i) = V.row(temp_b(i));
+
+			fan_gl.V3.resize(2, Eigen::NoChange);
+			fan_gl.V3 << v0_x, v0_y,
+				v1_x, v1_y;
+			return true;
 		}
 
-		viewer.data().add_points(temp_bc, Eigen::RowVector3d(1.0, 0.0, 0.0));
+		if (fan.center_set && fan.first_point_on_circumstance_set && (fan.second_point_on_circumstance_set == false))
+		{
+			fan.second_point_on_circumstance(0) = mouse_x;
+			fan.second_point_on_circumstance(1) = mouse_y;
+			fan_gl.dirty = true;
+
+			float v0_x = fan.center.x();
+			float v0_y = fan.center.y();
+			float v1_x = fan.first_point_on_circumstance.x();
+			float v1_y = fan.first_point_on_circumstance.y();
+			float v2_x = fan.second_point_on_circumstance.x();
+			float v2_y = fan.second_point_on_circumstance.y();
+
+			float w = viewer.core.viewport(2);
+			float h = viewer.core.viewport(3);
+			fan_gl.proj << 2.f / w, 0.f, -1.f,
+				0.f, -2.f / h, 1.f,
+				0.f, 0.f, 1.f;
+
+			fan_gl.V3.resize(3, Eigen::NoChange);
+			fan_gl.V3 << v0_x, v0_y,
+				v1_x, v1_y,
+				v2_x, v2_y;
+			return true;
+		}
 		return true;
 	}
 	
@@ -431,6 +465,39 @@ bool mouse_move(igl::opengl::glfw::Viewer& viewer, int mouse_x, int mouse_y) {
 			return true;
 		}
 	}
+
+	if (vertices_marquee_enabled && marquee.one_corner_set) {
+		marquee.to_x = mouse_x;
+		marquee.to_y = mouse_y;
+		marquee.two_corners_set = true;
+		marquee_gl.dirty = true;
+
+		float w = viewer.core.viewport(2);
+		float h = viewer.core.viewport(3);
+
+		float from_x = 2. * marquee.from_x / w - 1.;
+		float from_y = -2. * marquee.from_y / h + 1.;
+		float to_x = 2. * marquee.to_x / w - 1.;
+		float to_y = -2. * marquee.to_y / h + 1.;
+
+		marquee_gl.V_vbo << from_x, from_y, 0.,
+			to_x, from_y, 0.,
+			to_x, to_y, 0.,
+			from_x, to_y, 0.;
+
+		viewer.data().remove_points(temp_bc);
+		temp_b.resize(0);
+		temp_bc.resize(0, 3);
+		marquee_select_vertices(viewer, marquee, U, temp_b);
+		temp_bc.resize(temp_b.size(), 3);
+		for (int i = 0; i < temp_b.size(); i++) {
+			temp_bc.row(i) = V.row(temp_b(i));
+		}
+
+		viewer.data().add_points(temp_bc, Eigen::RowVector3d(1.0, 0.0, 0.0));
+		return true;
+	}
+
 	return false;
 }
 
@@ -638,7 +705,7 @@ int main(int argc, char *argv[])
   viewer.callback_mouse_move = &mouse_move;
   viewer.callback_pre_draw = &pre_draw;
   viewer.callback_key_down = &key_down;
-  viewer.callback_mouse_down = [](igl::opengl::glfw::Viewer &viewer, int, int)->bool
+  viewer.callback_mouse_down = [](igl::opengl::glfw::Viewer &viewer, int button, int modifier)->bool
   {
 	  if (vertex_pick_enabled) {
 		  int vid = -1;
@@ -662,10 +729,42 @@ int main(int argc, char *argv[])
 		  }
 	  }
 
+	  if (vertices_rotate_enabled) {
+		  if (fan.center_set && 
+			  (!fan.first_point_on_circumstance_set) && 
+			  (!fan.second_point_on_circumstance_set) &&
+			  modifier == GLFW_MOD_ALT) {
+			  std::cout << "first point on circumstance" << std::endl;
+			  fan.first_point_on_circumstance(0) = viewer.current_mouse_x;
+			  fan.first_point_on_circumstance(1) = viewer.current_mouse_y;
+			  fan.first_point_on_circumstance_set = true;
+			  return true;
+		  }
+
+		  if (fan.center_set &&
+			  fan.first_point_on_circumstance_set &&
+			  (!fan.second_point_on_circumstance_set) &&
+			  modifier == GLFW_MOD_ALT) {
+			  std::cout << "second point on circumstance" << std::endl;
+			  fan.second_point_on_circumstance(0) = viewer.current_mouse_x;
+			  fan.second_point_on_circumstance(1) = viewer.current_mouse_y;
+			  fan.second_point_on_circumstance_set = true;
+			  return true;
+		  }
+	  }
+
 	  if (vertices_marquee_enabled) {
 		  if (temp_b.rows() > 0 && temp_bc.rows() > 0) {
+			  if (modifier == GLFW_MOD_ALT) { // rotate the selected vertices
+				  std::cout << "rotate_enabled" << std::endl;
+				  vertices_rotate_enabled = true;
+				  fan_gl.init();
+				  fan.center(0) = viewer.current_mouse_x;
+				  fan.center(1) = viewer.current_mouse_y;
+				  return true;
+			  }
+			  // If click on one of the vertices selected, move the selected vertices
 			  int vid = -1;
-			  // Cast a ray in the view direction starting from the mouse position
 			  double x = viewer.current_mouse_x;
 			  double y = viewer.core.viewport(3) - viewer.current_mouse_y;
 			  if (igl::unproject_onto_mesh(
@@ -708,6 +807,22 @@ int main(int argc, char *argv[])
 		  return true;
 	  }
 
+	  if (vertices_rotate_enabled) {
+		  if ((!fan.center_set) && (!fan.first_point_on_circumstance_set) && (!fan.second_point_on_circumstance_set))
+		  {
+			  std::cout << "fan center set" << std::endl;
+			  fan.center_set = true;
+		  }
+		  if (fan.center_set && fan.first_point_on_circumstance_set) {
+			  std::cout << "restart the fan" << std::endl;
+			  fan.center_set = false;
+			  fan.first_point_on_circumstance_set = false;
+			  fan.second_point_on_circumstance_set = false;
+			  vertices_rotate_enabled = false;
+			  return true;
+		  }
+	  }
+
 	  if (vertices_marquee_enabled) {
 		  marquee.one_corner_set = false;
 		  marquee.two_corners_set = false;
@@ -732,6 +847,11 @@ int main(int argc, char *argv[])
 	  if (vertices_marquee_enabled && marquee.two_corners_set) {
 		  marquee_gl.bind();
 		  marquee_gl.draw();
+	  }
+
+	  if (vertices_rotate_enabled && fan.center_set) {
+		  fan_gl.bind();
+		  fan_gl.draw();
 	  }
 	  return false;
   };

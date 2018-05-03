@@ -6,10 +6,10 @@
 // v. 2.0. If a copy of the MPL was not distributed with this file, You can
 // obtain one at http://mozilla.org/MPL/2.0/.
 
-#ifndef IGL_OPENGL_MARQUEE_GL_H
-#define IGL_OPENGL_MARQUEE_GL_H
+#ifndef IGL_OPENGL_FAN_GL_H
+#define IGL_OPENGL_FAN_GL_H
 
-// Create a rectangular marque from screen points
+// Create a fan from screen points
 // compatible format 
 //  The class includes a shader and the opengl calls to plot the data
 
@@ -21,20 +21,24 @@ namespace igl
 {
   namespace opengl
   {
-	class MarqueeGL 
+	class FanGL 
 	{
 		public:
 		typedef unsigned int GLuint;
 		
 		bool is_initialized = false;
 		bool dirty = false;
-		GLuint vao_marquee;
-		GLuint shader_marquee;
+		GLuint vao_fan;
+		GLuint shader_fan;
+		GLuint vbo_V; // Vertices of the current fan
+
+		Eigen::Matrix3f proj;
 		
-		GLuint vbo_V; // Vertices of the current marquee
+		// Three points of a fan
+		Eigen::Matrix<float, Eigen::Dynamic, 2, Eigen::RowMajor> V3;
 		
-		// Temporary copy of the content of each VBO
-		Eigen::Matrix<float, 4, 3, Eigen::RowMajor> V_vbo;
+		// Interpolated temporary copy of the content of each VBO
+		Eigen::Matrix<float, Eigen::Dynamic, 2, Eigen::RowMajor> V_vbo;
 		
 		// Initialize shaders and buffers
 		IGL_INLINE void init();
@@ -48,9 +52,9 @@ namespace igl
 		// Bind the undrlying OpenGL buffer objects for subsequent marquee draw calls
 		IGL_INLINE void bind();
 		
-		// Draw the currently buffered marquee
+		// Draw the fan
 		IGL_INLINE void draw();
-		
+	
 		// Release the OpenGL buffer objects
 		IGL_INLINE void free_buffers();
 		
@@ -58,6 +62,6 @@ namespace igl
   }
 }
 #ifndef IGL_STATIC_LIBRARY
-#include "MarqueeGL.cpp"
+#include "FanGL.cpp"
 #endif
 #endif
