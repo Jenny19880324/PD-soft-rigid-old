@@ -53,7 +53,7 @@ namespace igl
 		nb(0),
 		m(1),
 		G(),
-		energy(RBC_ENERGY_TYPE_DEFAULT),
+		energy(RBC_ENERGY_TYPE_COROT),
 		with_dynamics(false),
 		f_ext(),
 		h(1),

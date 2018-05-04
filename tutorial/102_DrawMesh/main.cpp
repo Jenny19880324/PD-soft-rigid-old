@@ -36,6 +36,8 @@ Eigen::MatrixXi visible_F;
 Eigen::MatrixXd visible_C;
 Eigen::Matrix<double, Eigen::Dynamic, 3> bc;
 Eigen::Matrix<double, Eigen::Dynamic, 3> temp_bc;
+Eigen::Matrix<double, Eigen::Dynamic, 3> temp_bc_rotate_base;
+Eigen::RowVector3d center_of_temp_bc;
 Eigen::VectorXi b;
 Eigen::VectorXi temp_b;
 int pressed_b;
@@ -420,18 +422,14 @@ bool mouse_move(igl::opengl::glfw::Viewer& viewer, int mouse_x, int mouse_y) {
 			Eigen::Vector2d op1 = (fan.first_point_on_circumstance - fan.center).cast<double>();
 			Eigen::Vector2d op2 = (fan.second_point_on_circumstance - fan.center).cast<double>();
 			op1.normalize(); op2.normalize();
-			double angle = acos(op1.dot(op2)) * M_PI / 180.;
-			Eigen::RowVector3d cm = Eigen::RowVector3d::Zero();
-			for (int i = 0; i < temp_bc.rows(); i++) {
-				cm += temp_bc.row(i);
-			}
-			cm /= temp_bc.rows();
-			Eigen::Vector3d axis = cm.transpose() - viewer.core.camera_eye.cast<double>();
+			double angle = acos(op1.dot(op2));
+
+			Eigen::Vector3d axis = center_of_temp_bc.transpose() - viewer.core.camera_eye.cast<double>();
 			axis.normalize();
 
 			Eigen::Matrix3d rot_mat = igl::rotation_matrix_from_axis_and_angle(axis, angle);
 			for (int i = 0; i < temp_bc.rows(); i++) {
-				temp_bc.row(i) = (rot_mat * temp_bc.row(i).transpose()).transpose();
+				temp_bc.row(i) = (rot_mat * temp_bc_rotate_base.row(i).transpose()).transpose();
 				U.row(temp_b(i)) = temp_bc.row(i);
 			}
 			viewer.data().set_vertices(U);
@@ -686,7 +684,6 @@ int main(int argc, char *argv[])
 	  }
 
 	  // material panel
-	  rbc_data.energy = igl::RBC_ENERGY_TYPE_RBC;
 	  if (ImGui::Combo("Material", (int *)(&rbc_data.energy), "PD material\0\RBC\0"))
 	  {
 		  igl::rbc_precomputation(V, Vb, T, V.cols(), b, rbc_data);
@@ -767,6 +764,19 @@ int main(int argc, char *argv[])
 			  if (modifier == GLFW_MOD_ALT) { // rotate the selected vertices
 				  std::cout << "rotate_enabled" << std::endl;
 				  vertices_rotate_enabled = true;
+				  b.conservativeResize(b.rows() + temp_b.rows());
+				  b.tail(temp_b.rows()) << temp_b;
+				  bc.conservativeResize(bc.rows() + temp_bc.rows(), Eigen::NoChange);
+				  bc.block(bc.rows() - temp_bc.rows(), 0, temp_bc.rows(), 3) << temp_bc;
+				  igl::rbc_precomputation(V, Vb, T, V.cols(), b, rbc_data);
+
+				  center_of_temp_bc = Eigen::RowVector3d::Zero();
+				  temp_bc_rotate_base = temp_bc;
+				  for (int i = 0; i < temp_bc.rows(); i++) {
+					  center_of_temp_bc += temp_bc.row(i);
+				  }
+				  center_of_temp_bc /= temp_bc.rows();
+
 				  fan_gl.init();
 				  fan.center(0) = viewer.current_mouse_x;
 				  fan.center(1) = viewer.current_mouse_y;
