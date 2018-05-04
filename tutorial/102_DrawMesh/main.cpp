@@ -19,6 +19,7 @@
 #include <igl/deform_skeleton.h>
 #include <igl/dqs.h>
 #include <igl/rbc.h>
+#include <igl/rotation_matrix_from_axis_and_angle.h>
 #include <GLFW/glfw3.h>
 #include "tutorial_shared_path.h"
 
@@ -391,13 +392,6 @@ bool mouse_move(igl::opengl::glfw::Viewer& viewer, int mouse_x, int mouse_y) {
 			float v1_x = fan.first_point_on_circumstance.x();
 			float v1_y = fan.first_point_on_circumstance.y();
 
-			float w = viewer.core.viewport(2);
-			float h = viewer.core.viewport(3);
-
-			fan_gl.proj << 2.f / w, 0.f, -1.f,
-				0.f, -2.f / h, 1.f,
-				0.f, 0.f, 1.f;
-
 
 			fan_gl.V3.resize(2, Eigen::NoChange);
 			fan_gl.V3 << v0_x, v0_y,
@@ -418,16 +412,32 @@ bool mouse_move(igl::opengl::glfw::Viewer& viewer, int mouse_x, int mouse_y) {
 			float v2_x = fan.second_point_on_circumstance.x();
 			float v2_y = fan.second_point_on_circumstance.y();
 
-			float w = viewer.core.viewport(2);
-			float h = viewer.core.viewport(3);
-			fan_gl.proj << 2.f / w, 0.f, -1.f,
-				0.f, -2.f / h, 1.f,
-				0.f, 0.f, 1.f;
-
 			fan_gl.V3.resize(3, Eigen::NoChange);
 			fan_gl.V3 << v0_x, v0_y,
 				v1_x, v1_y,
 				v2_x, v2_y;
+
+			Eigen::Vector2d op1 = (fan.first_point_on_circumstance - fan.center).cast<double>();
+			Eigen::Vector2d op2 = (fan.second_point_on_circumstance - fan.center).cast<double>();
+			op1.normalize(); op2.normalize();
+			double angle = acos(op1.dot(op2)) * M_PI / 180.;
+			Eigen::RowVector3d cm = Eigen::RowVector3d::Zero();
+			for (int i = 0; i < temp_bc.rows(); i++) {
+				cm += temp_bc.row(i);
+			}
+			cm /= temp_bc.rows();
+			Eigen::Vector3d axis = cm.transpose() - viewer.core.camera_eye.cast<double>();
+			axis.normalize();
+
+			Eigen::Matrix3d rot_mat = igl::rotation_matrix_from_axis_and_angle(axis, angle);
+			for (int i = 0; i < temp_bc.rows(); i++) {
+				temp_bc.row(i) = (rot_mat * temp_bc.row(i).transpose()).transpose();
+				U.row(temp_b(i)) = temp_bc.row(i);
+			}
+			viewer.data().set_vertices(U);
+			viewer.data().move_points(temp_bc, Eigen::RowVector3d(1.0, 0.0, 0.0));
+			bc.block(bc.rows() - temp_bc.rows(), 0, temp_bc.rows(), 3) = temp_bc;
+			igl::rbc_precomputation(V, Vb, T, V.cols(), b, rbc_data);
 			return true;
 		}
 		return true;
@@ -456,11 +466,10 @@ bool mouse_move(igl::opengl::glfw::Viewer& viewer, int mouse_x, int mouse_y) {
 				U.row(temp_b(i)) += delta;
 				temp_bc.row(i) = U.row(temp_b(i));
 			}
-			viewer.data().set_vertices(U);
 
+			viewer.data().set_vertices(U);
 			viewer.data().move_points(temp_bc, Eigen::RowVector3d(1.0, 0.0, 0.0));
 			bc.block(bc.rows() - temp_bc.rows(), 0, temp_bc.rows(), 3) = temp_bc;
-
 			igl::rbc_precomputation(V, Vb, T, V.cols(), b, rbc_data);
 			return true;
 		}
@@ -761,6 +770,12 @@ int main(int argc, char *argv[])
 				  fan_gl.init();
 				  fan.center(0) = viewer.current_mouse_x;
 				  fan.center(1) = viewer.current_mouse_y;
+
+				  float w = viewer.core.viewport(2);
+				  float h = viewer.core.viewport(3);
+				  fan_gl.proj << 2.f / w, 0.f, -1.f,
+					  0.f, -2.f / h, 1.f,
+					  0.f, 0.f, 1.f;
 				  return true;
 			  }
 			  // If click on one of the vertices selected, move the selected vertices
@@ -818,6 +833,8 @@ int main(int argc, char *argv[])
 			  fan.center_set = false;
 			  fan.first_point_on_circumstance_set = false;
 			  fan.second_point_on_circumstance_set = false;
+			  fan_gl.V3.resize(0, Eigen::NoChange);
+			  fan_gl.V_vbo.resize(0, Eigen::NoChange);
 			  vertices_rotate_enabled = false;
 			  return true;
 		  }

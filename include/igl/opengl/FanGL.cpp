@@ -39,7 +39,7 @@ IGL_INLINE void igl::opengl::FanGL::init()
 	out vec4 outColor;
 	void main()
 	{
-		outColor = vec4(0.2, 0.2, 0.2, 1.0);
+		outColor = vec4(0.2, 0.2, 0.2, 0.5);
 	})";
 	
 	init_buffers();
@@ -127,6 +127,7 @@ IGL_INLINE void igl::opengl::FanGL::draw()
 	glGetDoublev(GL_LINE_WIDTH, &lw);
 	glLineWidth(1);
 	glDrawArrays(GL_LINE_LOOP, 0, V_vbo.rows());
+	glDrawArrays(GL_TRIANGLE_FAN, 0, V_vbo.rows());
 	glLineWidth(lw);
 }
 
