@@ -319,6 +319,7 @@ bool mouse_move(igl::opengl::glfw::Viewer& viewer, int mouse_x, int mouse_y) {
 
 		Eigen::Matrix4f rot = Eigen::Matrix4f::Identity();
 		rot.block<3, 3>(0, 0) = trackball_angle.toRotationMatrix();
+
 		slice_plane.trans = (viewer.core.model.inverse() * rot * viewer.core.model).cast<double>();
 		slice_plane.axis1 = (slice_plane.trans * Eigen::Vector4d(slice_plane.axis1.x(), slice_plane.axis1.y(), slice_plane.axis1.z(), 1.0)).block<3, 1>(0, 0);
 		slice_plane.axis2 = (slice_plane.trans * Eigen::Vector4d(slice_plane.axis2.x(), slice_plane.axis2.y(), slice_plane.axis2.z(), 1.0)).block<3, 1>(0, 0);
@@ -328,10 +329,10 @@ bool mouse_move(igl::opengl::glfw::Viewer& viewer, int mouse_x, int mouse_y) {
 		Eigen::Vector3d c2 = -slice_plane.axis1 + slice_plane.axis2;
 		Eigen::Vector3d c3 = -slice_plane.axis1 - slice_plane.axis2;
 		Eigen::Vector3d c4 =  slice_plane.axis1 - slice_plane.axis2;
-		slice_plane.vertices.row(0) = slice_plane.center + 2.0 * c1;
-		slice_plane.vertices.row(1) = slice_plane.center + 2.0 * c2;
-		slice_plane.vertices.row(2) = slice_plane.center + 2.0 * c3;
-		slice_plane.vertices.row(3) = slice_plane.center + 2.0 * c4;
+		slice_plane.vertices.row(0) = slice_plane.center + c1;
+		slice_plane.vertices.row(1) = slice_plane.center + c2;
+		slice_plane.vertices.row(2) = slice_plane.center + c3;
+		slice_plane.vertices.row(3) = slice_plane.center + c4;
 		slice_plane.stored_vertices = slice_plane.vertices;
 
 		viewer.slice_plane.set_vertices(slice_plane.vertices);
@@ -582,6 +583,18 @@ int main(int argc, char *argv[])
 			  viewer.data().clear();
 			  viewer.data().set_mesh(U, visible_F);
 			  viewer.data().set_colors(visible_C);
+
+			  // Find the bounding box
+			  Eigen::Vector3d m = V.colwise().minCoeff();
+			  Eigen::Vector3d M = V.colwise().maxCoeff();
+
+			  double x_scale = (M - m).x();
+			  double y_scale = (M - m).y();
+			  double z_scale = (M - m).z();
+
+			  slice_plane.normal << 0.0, 0.0, 1.0;
+			  slice_plane.axis1 << x_scale, 0., 0.;
+			  slice_plane.axis2 << 0., y_scale, 0.;
 		  }
 
 		  if (ImGui::Checkbox("active", &slice_plane.active))
@@ -597,39 +610,47 @@ int main(int argc, char *argv[])
 
 		  if (ImGui::Combo("Orientation", (int *)(&dir), "x\0\y\0\z\0\0"))
 		  {
+			  // Find the bounding box
+			  Eigen::Vector3d m = V.colwise().minCoeff();
+			  Eigen::Vector3d M = V.colwise().maxCoeff();
+
+			  double x_scale = (M - m).x();
+			  double y_scale = (M - m).y();
+			  double z_scale = (M - m).z();
+
 			  switch (dir)
 			  {
 				  case igl::opengl::glfw::Viewer::x:
 					  slice_plane.normal << 1.0, 0.0, 0.0;
-					  slice_plane.axis1 << 0., 1., 0.;
-					  slice_plane.axis2 << 0., 0., 1.;
+					  slice_plane.axis1 << 0., y_scale, 0.;
+					  slice_plane.axis2 << 0., 0., z_scale;
 					  slice_plane.vertices <<
-						  0., -2., 2.,
-						  0., 2., 2.,
-						  0., 2., -2.,
-						  0., -2., -2.;
+						  0., -y_scale, z_scale,
+						  0., y_scale, z_scale,
+						  0., y_scale, -z_scale,
+						  0., -y_scale, -z_scale;
 					  slice_plane.stored_vertices = slice_plane.vertices;
 					  break;
 				  case igl::opengl::glfw::Viewer::y:
 					  slice_plane.normal << 0.0, 1.0, 0.0;
-					  slice_plane.axis1 << 0., 0., 1.;
-					  slice_plane.axis2 << 1., 0., 0.;
+					  slice_plane.axis1 << 0., 0., z_scale;
+					  slice_plane.axis2 << x_scale, 0., 0.;
 					  slice_plane.vertices <<
-						  -2., 0., 2.,
-						  2., 0., 2.,
-						  2., 0., -2.,
-						  -2., 0., -2.;
+						  -x_scale, 0., z_scale,
+						  x_scale, 0., z_scale,
+						  x_scale, 0., -z_scale,
+						  -x_scale, 0., -z_scale;
 					  slice_plane.stored_vertices = slice_plane.vertices;
 					  break;
 				  case igl::opengl::glfw::Viewer::z:
 					  slice_plane.normal << 0.0, 0.0, 1.0;
-					  slice_plane.axis1 << 1., 0., 0.;
-					  slice_plane.axis2 << 0., 1., 0.;
+					  slice_plane.axis1 << x_scale, 0., 0.;
+					  slice_plane.axis2 << 0., y_scale, 0.;
 					  slice_plane.vertices <<
-						  -2., 2., 0.,
-						  2, 2., 0.,
-						  2., -2., 0.,
-						  -2., -2., 0.;
+						  -x_scale, y_scale, 0.,
+						  x_scale, y_scale, 0.,
+						  x_scale, -y_scale, 0.,
+						  -x_scale, -y_scale, 0.;
 					  slice_plane.stored_vertices = slice_plane.vertices;
 					  break;
 			  }
