@@ -519,6 +519,12 @@ IGL_INLINE bool igl::readMESH(
 	Eigen::PlainObjectBase<DerivedF>& F,
 	Eigen::PlainObjectBase<DerivedC>& C)
 {
+	V.resize(0, Eigen::NoChange);
+	Vf.resize(0, 3);
+	Vb.resize(0, 3);
+	T.resize(0, Eigen::NoChange);
+	F.resize(0, Eigen::NoChange);
+	C.resize(0, Eigen::NoChange);
 	using namespace std;
 #ifndef LINE_MAX
 #  define LINE_MAX 2048
@@ -705,7 +711,7 @@ IGL_INLINE bool igl::readMESH(
 		T(i, 2) = c - 1;
 		T(i, 3) = d - 1;
 
-		if (extra == 0) {
+		if (extra < 0 ) {
 			rigid_vertex_set.insert(T(i, 0));
 			rigid_vertex_set.insert(T(i, 1));
 			rigid_vertex_set.insert(T(i, 2));

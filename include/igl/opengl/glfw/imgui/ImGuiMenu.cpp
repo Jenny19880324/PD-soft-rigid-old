@@ -7,6 +7,7 @@
 // obtain one at http://mozilla.org/MPL/2.0/.
 ////////////////////////////////////////////////////////////////////////////////
 #include "ImGuiMenu.h"
+#include <igl/readMESH.h>
 #include <igl/project.h>
 #include <imgui/imgui.h>
 #include <imgui_impl_glfw_gl3.h>
@@ -14,6 +15,9 @@
 #include <GLFW/glfw3.h>
 #include <iostream>
 ////////////////////////////////////////////////////////////////////////////////
+
+extern Eigen::MatrixXd V, Vf, Vb, C;
+extern Eigen::MatrixXi T, F;
 
 namespace igl
 {
@@ -60,6 +64,17 @@ IGL_INLINE void ImGuiMenu::shutdown()
   ImGui_ImplGlfwGL3_Shutdown();
   ImGui::DestroyContext(context_);
   context_ = nullptr;
+}
+
+IGL_INLINE bool ImGuiMenu::load(std::string filename)
+{
+	igl::readMESH(filename, V, Vf, Vb, T, F, C);
+	return true;
+}
+
+IGL_INLINE bool ImGuiMenu::save(std::string filename)
+{
+	return false;
 }
 
 IGL_INLINE bool ImGuiMenu::pre_draw()

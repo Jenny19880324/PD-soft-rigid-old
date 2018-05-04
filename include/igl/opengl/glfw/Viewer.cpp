@@ -44,6 +44,9 @@
 #include <igl/unproject.h>
 #include <igl/serialize.h>
 
+extern Eigen::MatrixXd U, V, Vf, Vb, C;
+extern Eigen::MatrixXi T, F;
+
 // Internal global variables used for glfw event handling
 static igl::opengl::glfw::Viewer * __viewer;
 static double highdpi = 1;
@@ -372,6 +375,11 @@ namespace glfw
     {
       if (plugins[i]->load(mesh_file_name_string))
       {
+		  U = V;
+		  data().clear();
+		  data().set_mesh(U, F);
+		  data().set_colors(C);
+		  core.align_camera_center(data().V, data().F);
         return true;
       }
     }

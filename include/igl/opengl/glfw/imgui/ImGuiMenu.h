@@ -46,6 +46,10 @@ public:
 
   IGL_INLINE virtual void shutdown() override;
 
+  IGL_INLINE virtual bool load(std::string filename) override;
+
+  IGL_INLINE virtual bool save(std::string filename) override;
+
   IGL_INLINE virtual bool pre_draw() override;
 
   IGL_INLINE  virtual bool post_draw() override;
@@ -96,6 +100,7 @@ public:
   IGL_INLINE float hidpi_scaling();
 
   float menu_scaling() { return hidpi_scaling_ / pixel_ratio_; }
+
 };
 
 } // end namespace
