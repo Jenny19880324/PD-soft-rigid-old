@@ -27,6 +27,8 @@ bool vertex_pick_enabled = false;
 bool vertices_marquee_enabled = false;
 bool vertices_move_enabled = false;
 bool vertices_rotate_enabled = false;
+bool external_force_enabled = false;
+bool gravity_enabled = false;
 
 Eigen::MatrixXd V, Vf, Vb, U;
 Eigen::MatrixXi T;
@@ -556,7 +558,7 @@ bool key_down(igl::opengl::glfw::Viewer &viewer, unsigned char key, int mods)
 int main(int argc, char *argv[])
 {
   // Load a mesh in MESH format
-  igl::readMESH(TUTORIAL_SHARED_PATH "/cube.mesh", V, Vf, Vb, T, F, C);
+  igl::readMESH(TUTORIAL_SHARED_PATH "/bar2.1.mesh", V, Vf, Vb, T, F, C);
   U = V;
 
   // Init the viewer
@@ -723,6 +725,34 @@ int main(int argc, char *argv[])
 	  // Expose the same variable directly
 	  ImGui::PushItemWidth(-80);
 	  ImGui::DragFloat("mu", &rbc_data.mu, 0.0, 0.0, 3.0);
+	  ImGui::PopItemWidth();
+
+	  if (ImGui::Checkbox("external force", &external_force_enabled)) {
+		}
+	  static float g = -0.098;
+	  if (ImGui::Checkbox("gravity", &gravity_enabled)) {
+		  if (gravity_enabled) {
+			  rbc_data.f_ext = Eigen::RowVector3d(0., (double)g, 0.).replicate(V.rows(), 1);
+		  }
+		  else {
+			  rbc_data.f_ext.setZero();
+		  }
+	  }
+	  ImGui::SameLine();
+	  ImGui::PushItemWidth(-60);
+	  if (ImGui::DragFloat("g", &g, 1.0, -1.0, 0)) {
+		  rbc_data.f_ext = Eigen::RowVector3d(0., (double)g, 0.).replicate(V.rows(), 1);
+	  }
+	  ImGui::PopItemWidth();
+
+	  if (ImGui::Combo("Constraint", (int *)(&rbc_data.constraint), "hard\0\soft\0")) {
+		  //igl::rbc_precomputation(V, Vb, T, V.cols(), b, rbc_data);
+	  }
+	  ImGui::PushItemWidth(-60);
+	  if (ImGui::DragFloat("soft constraint weight", &rbc_data.constraint_weight, 1.0, 0.0, 10.))
+	  {
+		  //igl::rbc_precomputation(V, Vb, T, V.cols(), b, rbc_data);
+	  }
 	  ImGui::PopItemWidth();
 
 	  ImGui::End();

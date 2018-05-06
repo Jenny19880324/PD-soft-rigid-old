@@ -267,8 +267,3 @@ page](https://github.com/libigl/libigl/issues).
 Please see individual files for appropriate copyright notices.
 
 
-UI  parameter
-bend a bar
-marquee selection
-larger mesh
-

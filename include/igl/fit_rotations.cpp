@@ -84,9 +84,12 @@ IGL_INLINE void igl::fit_rotations(
 		typedef Eigen::Matrix<typename DerivedD::Scalar, 3, 3> Mat3;
 		typedef Eigen::Matrix<typename DerivedD::Scalar, 3, 1> Vec3;
 		Mat3 ri;
-		polar_svd3x3(si, ri);
+		Mat3 ti, ui, vi;
+		Vec3 _;
+		igl::polar_svd(si, ri, ti, ui, _, vi);
+		//polar_svd3x3(si, ri);
 		assert(ri.determinant() >= 0);
-		R.block(r * dim, 0, dim, dim) = ri;
+		R.block(r * dim, 0, dim, dim) = ri.transpose();
 	}
 }
 

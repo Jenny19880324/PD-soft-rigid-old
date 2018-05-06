@@ -2,7 +2,7 @@
 #include "shape_matrix.h"
 #include "massmatrix.h"
 #include "fit_rotations.h"
-#include "cotmatrix.h"
+#include "laplacian_matrix.h"
 #include "rbc_rhs.h"
 
 template<
@@ -59,9 +59,20 @@ IGL_INLINE bool igl::rbc_precomputation(
 	shape_matrix(V, F, eff_energy, data.SM);
 	typedef SparseMatrix<Scalar> SparseMatrixS;
 	SparseMatrixS L;
+
 	laplacian_matrix(V, F, L);
 	
 	rbc_rhs(V, F, data.dim, eff_energy, data.J);
+
+	if (data.constraint == SOFT_CONSTRAINT) {
+		for (int i = 0; i < b.rows(); i++) {
+			SparseMatrix<Scalar> Ai(1, V.rows());
+			vector<Triplet<Scalar>> Ai_IJV;
+			Ai_IJV.push_back(Triplet<Scalar>(0, b(i), data.constraint_weight));
+			Ai.setFromTriplets(Ai_IJV.begin(), Ai_IJV.end());
+			L += Ai.transpose() * Ai;
+		}
+	}
 	SparseMatrix<double> Q = L.eval();
 
 	if (data.with_dynamics)
@@ -100,6 +111,11 @@ IGL_INLINE bool igl::rbc_precomputation(
 		data.T.block(0, 0, 3, 3) = MatrixXd::Identity(3, 3);
 	}
 
+	if (data.constraint == SOFT_CONSTRAINT) {
+		return min_quad_with_fixed_precompute(
+			Q, VectorXi(), SparseMatrix<double>(), true, data.solver_data);
+	}
+
 	return min_quad_with_fixed_precompute(
 		Q, b, SparseMatrix<double>(), true, data.solver_data);
 }
@@ -115,7 +131,7 @@ IGL_INLINE bool igl::rbc_solve(
 	{
 		using namespace Eigen;
 		using namespace std;
-		if (data.b.size() != bc.rows()) {
+ 		if (data.b.size() != bc.rows()) {
 			std::cout << "data.b.size() = " << data.b.size() << std::endl;
 			std::cout << "bc.rows()     = " << bc.rows() << std::endl;
 		}
@@ -162,8 +178,8 @@ IGL_INLINE bool igl::rbc_solve(
 			shape_matrix(U, data.F, data.energy, S);
 			const int nr = data.SM.rows() / 3;
 			for (int r = 0; r < nr; ++r) {
-				Matrix3d Dm = data.SM.block(3 * r, 0, 3, 3);
-				Matrix3d Ds = S.block(3 * r, 0, 3, 3);
+				Matrix3d Dm = data.SM.block(3 * r, 0, 3, 3).transpose();
+				Matrix3d Ds = S.block(3 * r, 0, 3, 3).transpose();
 				F.block(3 * r, 0, 3, 3) = Ds * Dm.inverse();
 			}
 			fit_rotations(F, R);
@@ -190,14 +206,29 @@ IGL_INLINE bool igl::rbc_solve(
 				B += Dl;
 			}
 
+			if (data.constraint == SOFT_CONSTRAINT) {
+				for (int i = 0; i < data.b.rows(); i++) {
+					B.row(data.b(i)) -= data.constraint_weight * bc.row(data.b(i));
+				}
+			}
+
 			if (data.energy == RBC_ENERGY_TYPE_RBC) {
 				B = data.B_trans * B;
 			}
+			
+			if (data.constraint == SOFT_CONSTRAINT) {
+				min_quad_with_fixed_solve(
+					data.solver_data,
+					B, MatrixX3d(), Beq,
+					q);
+			}
+			else {
+				min_quad_with_fixed_solve(
+					data.solver_data,
+					B, bc, Beq,
+					q);
+			}
 
-			min_quad_with_fixed_solve(
-			data.solver_data,
-			B, bc, Beq,
-			q);
 
 			if (data.energy == RBC_ENERGY_TYPE_RBC) {
 				U = data.B * q;

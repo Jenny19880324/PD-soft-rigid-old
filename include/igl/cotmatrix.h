@@ -49,11 +49,6 @@ namespace igl
 		const Eigen::MatrixBase<DerivedF> & F,
 		Eigen::SparseMatrix<Scalar>& L);
 
-	template <typename DerivedV, typename DerivedF, typename Scalar>
-	IGL_INLINE void laplacian_matrix(
-		const Eigen::MatrixBase<DerivedV> & V,
-		const Eigen::MatrixBase<DerivedF> & F,
-		Eigen::SparseMatrix<Scalar>& L);
 }
 
 #ifndef IGL_STATIC_LIBRARY

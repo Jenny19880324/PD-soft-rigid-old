@@ -3,6 +3,7 @@
 #include "igl_inline.h"
 #include "min_quad_with_fixed.h"
 #include "RBCEnergyType.h"
+#include "ConstraintType.h"
 #include <Eigen/Core>
 #include <Eigen/Sparse>
 
@@ -17,6 +18,7 @@ namespace igl
 		// G  #V list of group indices (1 to k) for each vertex, such that vertex i
 		//    is assigned to group G(i)
 		// energy type of energy to use
+		// constraint type of constraint to use
 		// with_dynamics whether using dynamics (need to call rbc_precomputation 
 		// after changing)
 		// f_ext #V by dim list of external forces
@@ -35,10 +37,12 @@ namespace igl
 		Eigen::VectorXi G;
 		Eigen::MatrixXi F;
 		RBCEnergyType energy;
+		ConstraintType constraint;
 		bool with_dynamics;
 		Eigen::MatrixXd f_ext, vel, Ab, T;
 		double h;
 		float mu;
+		float constraint_weight;
 		int max_iter;
 		Eigen::SparseMatrix<double> J, M;
 		Eigen::SparseMatrix<double> L;
@@ -58,6 +62,7 @@ namespace igl
 		f_ext(),
 		h(1),
 		mu(1.0),
+		constraint_weight(1.0),
 		max_iter(10),
 		J(),
 		L(),
