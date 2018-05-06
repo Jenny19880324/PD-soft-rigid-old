@@ -58,6 +58,7 @@ namespace igl
 		m(1),
 		G(),
 		energy(RBC_ENERGY_TYPE_COROT),
+		constraint(SOFT_CONSTRAINT),
 		with_dynamics(false),
 		f_ext(),
 		h(1),

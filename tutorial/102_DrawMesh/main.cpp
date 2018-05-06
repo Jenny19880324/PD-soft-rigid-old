@@ -723,6 +723,16 @@ int main(int argc, char *argv[])
 		  "Simulation", nullptr
 	  );
 
+	  if (ImGui::Button("reset")) {
+		  U = V;
+		  viewer.data().remove_points(bc);
+		  b.resize(0, Eigen::NoChange);
+		  bc.resize(0, Eigen::NoChange);
+		  temp_b.resize(0, Eigen::NoChange);
+		  temp_bc.resize(0, Eigen::NoChange);
+		  igl::rbc_precomputation(V, Vb, T, V.cols(), b, rbc_data);
+	  }
+
 	  // Expose the same variable directly
 	  ImGui::PushItemWidth(-80);
 	  ImGui::DragFloat("mu", &rbc_data.mu, 0.0, 0.0, 3.0);
