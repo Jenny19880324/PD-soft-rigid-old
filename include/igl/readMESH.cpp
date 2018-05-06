@@ -694,6 +694,7 @@ IGL_INLINE bool igl::readMESH(
 		return false;
 	}
 	// allocate space for tetrahedra
+	Eigen::VectorXi A(number_of_tetrahedra); // region attribute
 	T.resize(number_of_tetrahedra, 4);
 	// tet indices
 	int a, b, c, d;
@@ -710,6 +711,7 @@ IGL_INLINE bool igl::readMESH(
 		T(i, 1) = b - 1;
 		T(i, 2) = c - 1;
 		T(i, 3) = d - 1;
+		A(i) = extra;
 
 		if (extra < 0 ) {
 			rigid_vertex_set.insert(T(i, 0));
@@ -788,20 +790,9 @@ IGL_INLINE bool igl::readMESH(
 	colorScheme /= 255.0f;
 	C.resize(F.rows(), 4);
 	for (int f_i = 0; f_i < F.rows(); ++f_i) {
-		bool is_rigid_face = rigid_vertex_set.find(F(f_i, 0)) != rigid_vertex_set.end() &&
-			rigid_vertex_set.find(F(f_i, 1)) != rigid_vertex_set.end() &&
-			rigid_vertex_set.find(F(f_i, 2)) != rigid_vertex_set.end();
-
-		if (is_rigid_face) {
-			const size_t colorIdx = 5;
-			Eigen::Vector4d color = colorScheme.row(colorIdx);
-			C.row(f_i) = color;
-		}
-		else {
-			const size_t colorIdx = 1;
-			Eigen::Vector4d color = colorScheme.row(colorIdx);
-			C.row(f_i) = color;
-		}
+		const size_t colorIdx = A(f_i / 4) % 12;
+		Eigen::Vector4d color = colorScheme.row(colorIdx);
+		C.row(f_i) = color;
 	}
 	return true;
 }
