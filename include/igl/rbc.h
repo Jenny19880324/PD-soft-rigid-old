@@ -4,6 +4,7 @@
 #include "min_quad_with_fixed.h"
 #include "RBCEnergyType.h"
 #include "ConstraintType.h"
+#include "BoneConstraintType.h"
 #include <Eigen/Core>
 #include <Eigen/Sparse>
 
@@ -19,6 +20,7 @@ namespace igl
 		//    is assigned to group G(i)
 		// energy type of energy to use
 		// constraint type of constraint to use
+		// bone_constraint type of bone constraint to use
 		// with_dynamics whether using dynamics (need to call rbc_precomputation 
 		// after changing)
 		// f_ext #V by dim list of external forces
@@ -38,8 +40,9 @@ namespace igl
 		Eigen::MatrixXi F;
 		RBCEnergyType energy;
 		ConstraintType constraint;
+		BoneConstraintType bone_constraint;
 		bool with_dynamics;
-		Eigen::MatrixXd f_ext, vel, Ab, T;
+		Eigen::MatrixXd f_ext, vel, Ab, Vb, T;
 		double h;
 		float mu;
 		float constraint_weight;
@@ -57,13 +60,14 @@ namespace igl
 		nb(0),
 		m(1),
 		G(),
-		energy(RBC_ENERGY_TYPE_COROT),
+		energy(RBC_ENERGY_TYPE_RBC),
 		constraint(SOFT_CONSTRAINT),
+		bone_constraint(RIGID_BONE_CONSTRAINT),
 		with_dynamics(false),
 		f_ext(),
 		h(1),
 		mu(1.0),
-		constraint_weight(10.0),
+		constraint_weight(50.0),
 		max_iter(10),
 		J(),
 		L(),

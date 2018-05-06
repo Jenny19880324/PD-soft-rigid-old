@@ -2,6 +2,7 @@
 #include "shape_matrix.h"
 #include "massmatrix.h"
 #include "fit_rotations.h"
+#include "fit_rigid_motion.h"
 #include "laplacian_matrix.h"
 #include "rbc_rhs.h"
 
@@ -90,6 +91,7 @@ IGL_INLINE bool igl::rbc_precomputation(
 	}
 
 	if (eff_energy == RBC_ENERGY_TYPE_RBC) {
+		data.Vb = Vb;
 		data.Ab.resize(nb, 4 * data.m);
 		data.Ab << Vb, MatrixXd::Constant(nb, 1, 1);
 		data.B.resize(nf + nb, nf + 4 * data.m);
@@ -235,6 +237,20 @@ IGL_INLINE bool igl::rbc_solve(
 			}
 			else {
 				U = q;
+			}
+
+			// constraint the motion of the bone to be rigid.
+			if (data.bone_constraint == RIGID_BONE_CONSTRAINT) {
+				MatrixXd Ub = U.block(data.nf, 0, data.nb, data.dim);
+				Eigen::Matrix3d R;
+				Eigen::RowVector3d t;
+				Eigen::VectorXd w = Eigen::VectorXd::Ones(data.nb, 1);
+				fit_rigid_motion(data.Vb, Ub, w, R, t);
+
+				//std::cout << "R = " << R << std::endl;
+				//std::cout << "t = " << t << std::endl;
+				Ub = data.Vb * R + t.replicate(data.nb, 1);
+				U.block(data.nf, 0, data.nb, data.dim) = Ub;
 			}
 
 			iter++;

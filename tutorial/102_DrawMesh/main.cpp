@@ -718,7 +718,7 @@ int main(int argc, char *argv[])
 	  // Simulation panel
 	// Define next window position + size
 	  ImGui::SetNextWindowPos(ImVec2(180.f * menu.menu_scaling(), 0), ImGuiSetCond_FirstUseEver);
-	  ImGui::SetNextWindowSize(ImVec2(200, 160), ImGuiSetCond_FirstUseEver);
+	  ImGui::SetNextWindowSize(ImVec2(200, 200), ImGuiSetCond_FirstUseEver);
 	  ImGui::Begin(
 		  "Simulation", nullptr
 	  );
@@ -730,6 +730,7 @@ int main(int argc, char *argv[])
 		  bc.resize(0, Eigen::NoChange);
 		  temp_b.resize(0, Eigen::NoChange);
 		  temp_bc.resize(0, Eigen::NoChange);
+
 		  igl::rbc_precomputation(V, Vb, T, V.cols(), b, rbc_data);
 	  }
 
@@ -750,26 +751,29 @@ int main(int argc, char *argv[])
 		  }
 	  }
 	  ImGui::SameLine();
-	  ImGui::PushItemWidth(-60);
+	  ImGui::PushItemWidth(-40);
 	  if (ImGui::DragFloat("g", &g, 1.0, -1.0, 0)) {
 		  rbc_data.f_ext = Eigen::RowVector3d(0., (double)g, 0.).replicate(V.rows(), 1);
 	  }
 	  ImGui::PopItemWidth();
 
+	  ImGui::PushItemWidth(-120);
 	  if (ImGui::Combo("Constraint", (int *)(&rbc_data.constraint), "hard\0\soft\0")) {
 		  igl::rbc_precomputation(V, Vb, T, V.cols(), b, rbc_data);
 	  }
-	  ImGui::PushItemWidth(-60);
 	  if (ImGui::DragFloat("soft constraint weight", &rbc_data.constraint_weight, 1.0, 0.0, 100.))
 	  {
 		  igl::rbc_precomputation(V, Vb, T, V.cols(), b, rbc_data);
 	  }
-	  ImGui::PopItemWidth();
 
+	  if (ImGui::Combo("Bone Constraint", (int *)(&rbc_data.bone_constraint), "affine\0rigid\0")) {
+
+	  }
+	  ImGui::PopItemWidth();
 	  ImGui::End();
 
 	  // Mesh panel
-	  ImGui::SetNextWindowPos(ImVec2(180.f * menu.menu_scaling(), 160), ImGuiSetCond_FirstUseEver);
+	  ImGui::SetNextWindowPos(ImVec2(180.f * menu.menu_scaling(), 200), ImGuiSetCond_FirstUseEver);
 	  ImGui::SetNextWindowSize(ImVec2(200, 80), ImGuiSetCond_FirstUseEver);
 	  ImGui::Begin(
 		  "Mesh", nullptr
