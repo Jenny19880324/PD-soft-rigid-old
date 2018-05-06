@@ -62,7 +62,7 @@ namespace igl
 		f_ext(),
 		h(1),
 		mu(1.0),
-		constraint_weight(1.0),
+		constraint_weight(10.0),
 		max_iter(10),
 		J(),
 		L(),

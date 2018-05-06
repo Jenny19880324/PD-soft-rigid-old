@@ -558,7 +558,7 @@ bool key_down(igl::opengl::glfw::Viewer &viewer, unsigned char key, int mods)
 int main(int argc, char *argv[])
 {
   // Load a mesh in MESH format
-  igl::readMESH(TUTORIAL_SHARED_PATH "/bar2.1.mesh", V, Vf, Vb, T, F, C);
+  igl::readMESH(TUTORIAL_SHARED_PATH "/cube.mesh", V, Vf, Vb, T, F, C);
   U = V;
 
   // Init the viewer
@@ -715,6 +715,7 @@ int main(int argc, char *argv[])
 
   menu.callback_draw_custom_window = [&]()
   {
+	  // Simulation panel
 	// Define next window position + size
 	  ImGui::SetNextWindowPos(ImVec2(180.f * menu.menu_scaling(), 0), ImGuiSetCond_FirstUseEver);
 	  ImGui::SetNextWindowSize(ImVec2(200, 160), ImGuiSetCond_FirstUseEver);
@@ -746,15 +747,26 @@ int main(int argc, char *argv[])
 	  ImGui::PopItemWidth();
 
 	  if (ImGui::Combo("Constraint", (int *)(&rbc_data.constraint), "hard\0\soft\0")) {
-		  //igl::rbc_precomputation(V, Vb, T, V.cols(), b, rbc_data);
+		  igl::rbc_precomputation(V, Vb, T, V.cols(), b, rbc_data);
 	  }
 	  ImGui::PushItemWidth(-60);
-	  if (ImGui::DragFloat("soft constraint weight", &rbc_data.constraint_weight, 1.0, 0.0, 10.))
+	  if (ImGui::DragFloat("soft constraint weight", &rbc_data.constraint_weight, 1.0, 0.0, 100.))
 	  {
-		  //igl::rbc_precomputation(V, Vb, T, V.cols(), b, rbc_data);
+		  igl::rbc_precomputation(V, Vb, T, V.cols(), b, rbc_data);
 	  }
 	  ImGui::PopItemWidth();
 
+	  ImGui::End();
+
+	  // Mesh panel
+	  ImGui::SetNextWindowPos(ImVec2(180.f * menu.menu_scaling(), 160), ImGuiSetCond_FirstUseEver);
+	  ImGui::SetNextWindowSize(ImVec2(200, 80), ImGuiSetCond_FirstUseEver);
+	  ImGui::Begin(
+		  "Mesh", nullptr
+	  );
+
+	  ImGui::Text("#V %d\n", V.rows());
+	  ImGui::Text("#T %d\n", T.rows());
 	  ImGui::End();
   };
 

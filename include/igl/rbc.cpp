@@ -68,9 +68,9 @@ IGL_INLINE bool igl::rbc_precomputation(
 		for (int i = 0; i < b.rows(); i++) {
 			SparseMatrix<Scalar> Ai(1, V.rows());
 			vector<Triplet<Scalar>> Ai_IJV;
-			Ai_IJV.push_back(Triplet<Scalar>(0, b(i), data.constraint_weight));
+			Ai_IJV.push_back(Triplet<Scalar>(0, b(i), 1.0));
 			Ai.setFromTriplets(Ai_IJV.begin(), Ai_IJV.end());
-			L += Ai.transpose() * Ai;
+			L += data.constraint_weight * Ai.transpose() * Ai;
 		}
 	}
 	SparseMatrix<double> Q = L.eval();
@@ -208,7 +208,7 @@ IGL_INLINE bool igl::rbc_solve(
 
 			if (data.constraint == SOFT_CONSTRAINT) {
 				for (int i = 0; i < data.b.rows(); i++) {
-					B.row(data.b(i)) -= data.constraint_weight * bc.row(data.b(i));
+					B.row(data.b(i)) -= data.constraint_weight * bc.row(i);
 				}
 			}
 
