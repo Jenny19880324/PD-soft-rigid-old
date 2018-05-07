@@ -32,6 +32,7 @@ IGL_INLINE bool igl::rbc_precomputation(
 	// remember b
 	data.b = b;
 	data.F = F;
+	data.V = V;
 	// dimension
 	assert((dim == 3 || dim == 2) && "dim should be 2 or 3");
 	data.dim = dim;
@@ -255,15 +256,29 @@ IGL_INLINE bool igl::rbc_solve(
 			// constraint the motion of the bone to be rigid.
 			if (data.bone_constraint == RIGID_BONE_CONSTRAINT) {
 				MatrixXd Ub = U.block(data.nf, 0, data.nb, data.dim);
-				Eigen::Matrix3d R;
-				Eigen::RowVector3d t;
-				Eigen::VectorXd w = Eigen::VectorXd::Ones(data.nb, 1);
-				fit_rigid_motion(data.Vb, Ub, w, R, t);
+				//Eigen::Matrix3d R;
+				//Eigen::RowVector3d t;
+				//Eigen::VectorXd w = Eigen::VectorXd::Ones(data.nb, 1);
+				//fit_rigid_motion(data.Vb, Ub, w, R, t);
 
-				//std::cout << "R = " << R << std::endl;
-				//std::cout << "t = " << t << std::endl;
-				Ub = data.Vb * R + t.replicate(data.nb, 1);
-				U.block(data.nf, 0, data.nb, data.dim) = Ub;
+				////std::cout << "R = " << R << std::endl;
+				////std::cout << "t = " << t << std::endl;
+				//Ub = data.Vb * R + t.replicate(data.nb, 1);
+				//U.block(data.nf, 0, data.nb, data.dim) = Ub;
+
+				int row = 0;
+				for (int i = 1; i < data.N.size(); i++) {
+					int nb = data.N(i);
+					MatrixXd Ub = U.block(data.nf + row, 0, nb, data.dim);
+					MatrixXd Vb = data.V.block(data.nf + row, 0, nb, data.dim);
+					Eigen::Matrix3d R;
+					Eigen::RowVector3d t;
+					Eigen::VectorXd w = Eigen::VectorXd::Ones(nb, 1);
+					fit_rigid_motion(Vb, Ub, w, R, t);
+					Ub = Vb * R + t.replicate(nb, 1);
+					U.block(data.nf + row, 0, nb, data.dim) = Ub;
+				    row += nb;
+				}
 			}
 
 			iter++;

@@ -43,9 +43,14 @@
 #include <igl/snap_to_canonical_view_quat.h>
 #include <igl/unproject.h>
 #include <igl/serialize.h>
+#include <igl/rbc.h>
 
-extern Eigen::MatrixXd U, V, Vf, Vb, C;
+extern Eigen::MatrixXd U, V, C;
 extern Eigen::MatrixXi T, F;
+extern Eigen::Matrix<double, Eigen::Dynamic, 3> bc;
+extern Eigen::VectorXi b;
+extern Eigen::VectorXi N;
+extern igl::RBCData rbc_data;
 
 // Internal global variables used for glfw event handling
 static igl::opengl::glfw::Viewer * __viewer;
@@ -809,6 +814,21 @@ namespace glfw
   {
     igl::deserialize(core,"Core",fname.c_str());
     igl::deserialize(data(),"Data",fname.c_str());
+
+	U = data().V;
+	V = data().VV;
+	T = data().T;
+	N = data().N;
+	C = data().C;
+
+	if (data().b.size() > 0) {
+		b = data().b[0];
+		bc = data().bc[0];
+		data().add_points(bc, Eigen::RowVector3d(1.0, 0.0, 0.0));
+		igl::rbc_precomputation(V, T, N, V.cols(), b, rbc_data);
+	}
+
+
     return true;
   }
 
@@ -822,6 +842,13 @@ namespace glfw
 
   IGL_INLINE bool Viewer::save_scene(std::string fname)
   {
+	  data().VV = V;
+	  data().T = T;
+	  data().N = N;
+	  data().C = C;
+	  data().b.push_back(b);
+	  data().bc.push_back(bc);
+
     igl::serialize(core,"Core",fname.c_str(),true);
     igl::serialize(data(),"Data",fname.c_str());
 

@@ -70,6 +70,7 @@ IGL_INLINE void ImGuiMenu::shutdown()
 IGL_INLINE bool ImGuiMenu::load(std::string filename)
 {
 	igl::readMESH(filename, V, T, F, C, N);
+	viewer->data().VV = V;
 	return true;
 }
 

@@ -17,11 +17,13 @@
 #include <igl/PI.h>
 #include <igl/lbs_matrix.h>
 #include <igl/deform_skeleton.h>
+#include <igl/serialize.h>
 #include <igl/dqs.h>
 #include <igl/rbc.h>
 #include <igl/rotation_matrix_from_axis_and_angle.h>
 #include <GLFW/glfw3.h>
 #include "tutorial_shared_path.h"
+
 
 bool vertex_pick_enabled = false;
 bool vertices_marquee_enabled = false;
@@ -30,19 +32,21 @@ bool vertices_rotate_enabled = false;
 bool external_force_enabled = false;
 bool gravity_enabled = false;
 
+Eigen::VectorXi temp_b;
+Eigen::Matrix<double, Eigen::Dynamic, 3> temp_bc;
+Eigen::Matrix<double, Eigen::Dynamic, 3> temp_bc_rotate_base;
+Eigen::RowVector3d center_of_temp_bc;
+Eigen::MatrixXi visible_F;
+Eigen::MatrixXd visible_C;
+
 Eigen::MatrixXd V, U;
 Eigen::MatrixXi T;
 Eigen::MatrixXi F;
 Eigen::MatrixXd C;
-Eigen::MatrixXi visible_F;
-Eigen::MatrixXd visible_C;
 Eigen::Matrix<double, Eigen::Dynamic, 3> bc;
-Eigen::Matrix<double, Eigen::Dynamic, 3> temp_bc;
-Eigen::Matrix<double, Eigen::Dynamic, 3> temp_bc_rotate_base;
-Eigen::RowVector3d center_of_temp_bc;
 Eigen::VectorXi b;
-Eigen::VectorXi temp_b;
 Eigen::VectorXi N;
+
 int pressed_b;
 double anim_t = 0.0;
 double anim_t_dir = 0.033;
@@ -544,6 +548,7 @@ bool key_down(igl::opengl::glfw::Viewer &viewer, unsigned char key, int mods)
 			b.conservativeResize(b.rows() + temp_b.rows());
 			bc.block(bc.rows() - temp_bc.rows(), 0, temp_bc.rows(), 3) = temp_bc;
 			b.tail(temp_b.rows()) << temp_b;
+
 
 			viewer.data().set_points(bc, Eigen::RowVector3d(0., 1., 0.));
 			igl::rbc_precomputation(V, T, N, V.cols(), b, rbc_data);

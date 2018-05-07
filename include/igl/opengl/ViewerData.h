@@ -128,8 +128,16 @@ public:
   // Generates a default grid texture
   IGL_INLINE void grid_texture();
 
-  Eigen::MatrixXd V; // Vertices of the current mesh (#V x 3)
+  // data needs to be serialized
+  Eigen::MatrixXd V; // Vertices of the current mesh (#V x 3) 
+  Eigen::MatrixXd VV; // Vertices of the restpose mesh (#V x 3)
+  Eigen::MatrixXd C; // color of the mesh (#F x 4)
   Eigen::MatrixXi F; // Faces of the mesh (#F x 3)
+  Eigen::MatrixXi T; // Tetrahedron of the mesh (#T x 4)
+  Eigen::VectorXi N; // number of vertices in each region
+  std::vector<Eigen::Matrix<double, Eigen::Dynamic, 3>> bc; // constrained vertices
+  std::vector<Eigen::VectorXi> b;                           // constrained vertices index
+  bool gravity_enabled;
 
   // Per face attributes
   Eigen::MatrixXd F_normals; // One normal per face
@@ -224,6 +232,13 @@ namespace igl
     {
       SERIALIZE_MEMBER(V);
       SERIALIZE_MEMBER(F);
+	  SERIALIZE_MEMBER(VV);
+	  SERIALIZE_MEMBER(C);
+	  SERIALIZE_MEMBER(T);
+	  SERIALIZE_MEMBER(N);
+	  SERIALIZE_MEMBER(b);
+	  SERIALIZE_MEMBER(bc);
+	  SERIALIZE_MEMBER(gravity_enabled);
       SERIALIZE_MEMBER(F_normals);
       SERIALIZE_MEMBER(F_material_ambient);
       SERIALIZE_MEMBER(F_material_diffuse);

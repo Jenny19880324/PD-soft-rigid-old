@@ -43,7 +43,7 @@ namespace igl
 		ConstraintType constraint;
 		BoneConstraintType bone_constraint;
 		bool with_dynamics;
-		Eigen::MatrixXd f_ext, vel, Ab, Vb, T;
+		Eigen::MatrixXd f_ext, vel, Ab, V, T;
 		double h;
 		float mu;
 		float constraint_weight;

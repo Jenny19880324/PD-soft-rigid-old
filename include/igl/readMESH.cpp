@@ -761,8 +761,9 @@ IGL_INLINE bool igl::readMESH(
 		std::set<int> &one_rigid_set = m_it->second;
 		for (auto s_it = one_rigid_set.begin(); s_it != one_rigid_set.end(); s_it++)
 		{
-			//rearranged_V.row(nf + (s_it - one_rigid_set.begin())) = V.rows(*s_it);
-			//RI[*s_it] = nf + (s_it - one_rigid_set.begin());
+			int cnt = std::distance(one_rigid_set.begin(), s_it);
+			rearranged_V.row(nf + cnt) = V.row(*s_it);
+			RI[*s_it] = nf + cnt;
 		}
 	}
 
