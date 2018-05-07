@@ -75,33 +75,41 @@ namespace igl
 	// mesh_file_name path of .mesh file
 	// Outputs:
 	// V eigen double matrix #V by 3
-	// Vf eigen double matrix #flesh V by 3
-	// Vb eigen double matrix #bone V by 3
 	// T eigen int matrix #T by 4
 	// F eigen int matrix #F by 3
 	// C eigen double matrix #F by 4
-	template <typename DerivedV, typename DerivedT, typename DerivedF, typename DerivedC>
+    // N eigen int matrix #region by 1 
+    // (number_of_elastic_vertices, number_of_first_rigid_body_vertices, number_of_second_rigid_body_vertices ...)
+	template <
+		typename DerivedV, 
+		typename DerivedT, 
+		typename DerivedF, 
+		typename DerivedC,
+		typename DerivedN>
 	IGL_INLINE bool readMESH(
 		const std::string mesh_file_name,
 		Eigen::PlainObjectBase<DerivedV>& V,
-		Eigen::PlainObjectBase<DerivedV>& Vf,
-		Eigen::PlainObjectBase<DerivedV>& Vb,
 		Eigen::PlainObjectBase<DerivedT>& T,
 		Eigen::PlainObjectBase<DerivedF>& F,
-		Eigen::PlainObjectBase<DerivedC>& C);
+		Eigen::PlainObjectBase<DerivedC>& C,
+		Eigen::PlainObjectBase<DerivedN>& N);
 	// Inputs:
 	// mesh_file pointer to already opened .mesh file
 	// Outputs:
 	// mesh_file closed file
-	template <typename DerivedV, typename DerivedT, typename DerivedF, typename DerivedC>
+	template <
+		typename DerivedV, 
+		typename DerivedT, 
+		typename DerivedF, 
+		typename DerivedC,
+		typename DerivedN>
 	IGL_INLINE bool readMESH(
 		FILE * mesh_file,
 		Eigen::PlainObjectBase<DerivedV>& V,
-		Eigen::PlainObjectBase<DerivedV>& Vf,
-		Eigen::PlainObjectBase<DerivedV>& Vb,
 		Eigen::PlainObjectBase<DerivedT>& T,
 		Eigen::PlainObjectBase<DerivedF>& F,
-		Eigen::PlainObjectBase<DerivedC>& C);
+		Eigen::PlainObjectBase<DerivedC>& C,
+		Eigen::PlainObjectBase<DerivedN>& N);
 }
 
 #ifndef IGL_STATIC_LIBRARY

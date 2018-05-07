@@ -9,11 +9,12 @@
 template<
 	typename DerivedV,
 	typename DerivedF,
+	typename DerivedN,
 	typename Derivedb>
 IGL_INLINE bool igl::rbc_precomputation(
 	const Eigen::PlainObjectBase<DerivedV> & V,
-	const Eigen::PlainObjectBase<DerivedV> & Vb,
 	const Eigen::PlainObjectBase<DerivedF> & F,
+	const Eigen::PlainObjectBase<DerivedN> & N,
 	const int dim,
 	const Eigen::PlainObjectBase<Derivedb> & b,
 	RBCData & data)
@@ -23,12 +24,9 @@ IGL_INLINE bool igl::rbc_precomputation(
 	typedef typename DerivedV::Scalar Scalar;
 	// number of vertices
 	const int n = V.rows();
-	const int nb = Vb.rows();
-	const int nf = n - nb;
 
 	data.n = n;
-	data.nf = nf;
-	data.nb = nb;
+	data.N = N;
 	assert((b.size() == 0 || b.maxCoeff() < n) && "b out of bounds");
 	assert((b.size() == 0 || b.minCoeff() >=0) && "b out of bounds");
 	// remember b
@@ -91,26 +89,41 @@ IGL_INLINE bool igl::rbc_precomputation(
 	}
 
 	if (eff_energy == RBC_ENERGY_TYPE_RBC) {
-		data.Vb = Vb;
-		data.Ab.resize(nb, 4 * data.m);
-		data.Ab << Vb, MatrixXd::Constant(nb, 1, 1);
-		data.B.resize(nf + nb, nf + 4 * data.m);
+		//data.Vb = Vb;
+		//data.Ab.resize(nb, 4 * data.m);
+		//data.Ab << Vb, MatrixXd::Constant(nb, 1, 1);
+		data.nf = N(0);
+		data.nb = 0;
+		for (int i = 1; i < N.rows(); i++) {
+			data.nb += N(i);
+		}
+		assert(data.n == data.nf + data.nb);
+
+		// construct Ab
+		data.m = N.rows() - 1; // N(0) is the number of vertices of the elastic part
+		assert(data.m > 0);
+		data.Ab.resize(data.nb, 4 * data.m);
+		int row = 0;
+		for (int i = 1; i < N.rows(); i++)
+		{
+			data.Ab.block(row, (i - 1) * 4, N(i), 4) << V.block(data.nf + row, 0, N(i), 3), MatrixXd::Constant(N(i), 1, 1);
+			row += N(i);
+		}
+		assert(row == data.nb);
+
+		data.B.resize(data.n, data.nf + 4 * data.m);
 		std::vector<Triplet<double>> B_IJV;
-		for (int i = 0; i < nf; i++) {
+		for (int i = 0; i < data.nf; i++) {
 			B_IJV.push_back(Triplet<double>(i, i, 1));
 		}
-		for (int i = 0; i < nb; i++) {
-			for (int j = 0; j < 4; j++) {
-				B_IJV.push_back(Triplet<double>(nf + i, nf + j, data.Ab(i, j)));
+		for (int i = 0; i < data.nb; i++) {
+			for (int j = 0; j < 4 * data.m; j++) {
+				B_IJV.push_back(Triplet<double>(data.nf + i, data.nf + j, data.Ab(i, j)));
 			}
 		}
 		data.B.setFromTriplets(B_IJV.begin(), B_IJV.end());
 		data.B_trans = data.B.transpose();
 		Q = data.B_trans * Q * data.B;
-		
-		data.T.resize(4 * data.m, 3);
-		data.T.setZero();
-		data.T.block(0, 0, 3, 3) = MatrixXd::Identity(3, 3);
 	}
 
 	if (data.constraint == SOFT_CONSTRAINT) {
@@ -267,6 +280,5 @@ template bool igl::rbc_solve<Eigen::Matrix<double, -1, -1, 0, -1, -1>, Eigen::Ma
 // generated from msvc error
 template bool igl::rbc_solve<Eigen::Matrix<double, -1, 3, 0, -1, 3>, Eigen::Matrix<double, -1, -1, 0, -1, -1> >(Eigen::PlainObjectBase<Eigen::Matrix<double, -1, 3, 0, -1, 3> > const &, struct igl::RBCData &, Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> > &);
 //
-template bool igl::rbc_precomputation<Eigen::Matrix<double, -1, -1, 0, -1, -1>, Eigen::Matrix<int, -1, -1, 0, -1, -1>, Eigen::Matrix<int, -1, 1, 0, -1, 1> >(Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> > const &, Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> > const &, Eigen::PlainObjectBase<Eigen::Matrix<int, -1, -1, 0, -1, -1> > const &, int, Eigen::PlainObjectBase<Eigen::Matrix<int, -1, 1, 0, -1, 1> > const &, struct igl::RBCData &);
-
+template bool igl::rbc_precomputation<Eigen::Matrix<double, -1, -1, 0, -1, -1>, Eigen::Matrix<int, -1, -1, 0, -1, -1>, Eigen::Matrix<int, -1, 1, 0, -1, 1>, Eigen::Matrix<int, -1, 1, 0, -1, 1> >(Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> > const &, Eigen::PlainObjectBase<class Eigen::Matrix<int, -1, -1, 0, -1, -1> > const &, Eigen::PlainObjectBase<Eigen::Matrix<int, -1, 1, 0, -1, 1> > const &, int, Eigen::PlainObjectBase<Eigen::Matrix<int, -1, 1, 0, -1, 1> > const &, struct igl::RBCData &);
 #endif

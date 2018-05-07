@@ -34,6 +34,7 @@ namespace igl
 		// M mass matrix
 		// solver_data quadratic solver data
 		// b list of boundary indices into V
+		// N list of regional vertex indices. (nf, nb1 ,nb2, ...)
 		// dim dimension being used for solving
 		int n, nf, nb, m;
 		Eigen::VectorXi G;
@@ -53,6 +54,7 @@ namespace igl
 		Eigen::MatrixXd SM; // restpose shape matrix
 		min_quad_with_fixed_data<double> solver_data;
 		Eigen::VectorXi b;
+		Eigen::VectorXi N; 
 		int dim;
 		RBCData():
 		n(0),
@@ -73,6 +75,7 @@ namespace igl
 		L(),
 		solver_data(),
 		b(),
+		N(),
 		dim(-1) // force this to be set by _precomputation
 		{
 		};	
@@ -91,11 +94,12 @@ namespace igl
 	template <
 		typename DerivedV,
 		typename DerivedF,
+		typename DerivedN, 
 		typename Derivedb>
 	IGL_INLINE bool rbc_precomputation(
 		const Eigen::PlainObjectBase<DerivedV> & V,
-		const Eigen::PlainObjectBase<DerivedV> & Vb,
 		const Eigen::PlainObjectBase<DerivedF> & F,
+		const Eigen::PlainObjectBase<DerivedN> & N,
 		const int dim,
 		const Eigen::PlainObjectBase<Derivedb> & b,
 		RBCData & data);

@@ -16,8 +16,9 @@
 #include <iostream>
 ////////////////////////////////////////////////////////////////////////////////
 
-extern Eigen::MatrixXd V, Vf, Vb, C;
+extern Eigen::MatrixXd V, C;
 extern Eigen::MatrixXi T, F;
+extern Eigen::VectorXi N;
 
 namespace igl
 {
@@ -68,7 +69,7 @@ IGL_INLINE void ImGuiMenu::shutdown()
 
 IGL_INLINE bool ImGuiMenu::load(std::string filename)
 {
-	igl::readMESH(filename, V, Vf, Vb, T, F, C);
+	igl::readMESH(filename, V, T, F, C, N);
 	return true;
 }
 

@@ -30,7 +30,7 @@ bool vertices_rotate_enabled = false;
 bool external_force_enabled = false;
 bool gravity_enabled = false;
 
-Eigen::MatrixXd V, Vf, Vb, U;
+Eigen::MatrixXd V, U;
 Eigen::MatrixXi T;
 Eigen::MatrixXi F;
 Eigen::MatrixXd C;
@@ -42,6 +42,7 @@ Eigen::Matrix<double, Eigen::Dynamic, 3> temp_bc_rotate_base;
 Eigen::RowVector3d center_of_temp_bc;
 Eigen::VectorXi b;
 Eigen::VectorXi temp_b;
+Eigen::VectorXi N;
 int pressed_b;
 double anim_t = 0.0;
 double anim_t_dir = 0.033;
@@ -381,7 +382,7 @@ bool mouse_move(igl::opengl::glfw::Viewer& viewer, int mouse_x, int mouse_y) {
 			viewer.data().move_points(temp_bc, Eigen::RowVector3d(1.0, 0.0, 0.0));
 			bc.block(bc.rows() - temp_bc.rows(), 0, temp_bc.rows(), 3) = temp_bc;
 
-			igl::rbc_precomputation(V, Vb, T, V.cols(), b, rbc_data);
+			igl::rbc_precomputation(V, T, N, V.cols(), b, rbc_data);
 			return true;
 		}
 	}
@@ -438,7 +439,7 @@ bool mouse_move(igl::opengl::glfw::Viewer& viewer, int mouse_x, int mouse_y) {
 			viewer.data().set_vertices(U);
 			viewer.data().move_points(temp_bc, Eigen::RowVector3d(1.0, 0.0, 0.0));
 			bc.block(bc.rows() - temp_bc.rows(), 0, temp_bc.rows(), 3) = temp_bc;
-			igl::rbc_precomputation(V, Vb, T, V.cols(), b, rbc_data);
+			igl::rbc_precomputation(V, T, N, V.cols(), b, rbc_data);
 			return true;
 		}
 		return true;
@@ -471,7 +472,7 @@ bool mouse_move(igl::opengl::glfw::Viewer& viewer, int mouse_x, int mouse_y) {
 			viewer.data().set_vertices(U);
 			viewer.data().move_points(temp_bc, Eigen::RowVector3d(1.0, 0.0, 0.0));
 			bc.block(bc.rows() - temp_bc.rows(), 0, temp_bc.rows(), 3) = temp_bc;
-			igl::rbc_precomputation(V, Vb, T, V.cols(), b, rbc_data);
+			igl::rbc_precomputation(V, T, N, V.cols(), b, rbc_data);
 			return true;
 		}
 	}
@@ -545,7 +546,7 @@ bool key_down(igl::opengl::glfw::Viewer &viewer, unsigned char key, int mods)
 			b.tail(temp_b.rows()) << temp_b;
 
 			viewer.data().set_points(bc, Eigen::RowVector3d(0., 1., 0.));
-			igl::rbc_precomputation(V, Vb, T, V.cols(), b, rbc_data);
+			igl::rbc_precomputation(V, T, N, V.cols(), b, rbc_data);
 			temp_b.resize(0);
 			temp_bc.resize(0, 3);
 		}
@@ -558,7 +559,7 @@ bool key_down(igl::opengl::glfw::Viewer &viewer, unsigned char key, int mods)
 int main(int argc, char *argv[])
 {
   // Load a mesh in MESH format
-  igl::readMESH(TUTORIAL_SHARED_PATH "/cube.mesh", V, Vf, Vb, T, F, C);
+  igl::readMESH(TUTORIAL_SHARED_PATH "/cube.mesh", V, T, F, C, N);
   U = V;
 
   // Init the viewer
@@ -702,14 +703,14 @@ int main(int argc, char *argv[])
 			  bc.resize(0, 3);
 			  temp_b.resize(0);
 			  temp_bc.resize(0, 3);
-			  igl::rbc_precomputation(V, Vb, T, V.cols(), b, rbc_data);
+			  igl::rbc_precomputation(V, T, N, V.cols(), b, rbc_data);
 		  }
 	  }
 
 	  // material panel
 	  if (ImGui::Combo("Material", (int *)(&rbc_data.energy), "PD material\0\RBC\0"))
 	  {
-		  igl::rbc_precomputation(V, Vb, T, V.cols(), b, rbc_data);
+		  igl::rbc_precomputation(V, T, N, V.cols(), b, rbc_data);
 	  }
   };
 
@@ -731,7 +732,7 @@ int main(int argc, char *argv[])
 		  temp_b.resize(0, Eigen::NoChange);
 		  temp_bc.resize(0, Eigen::NoChange);
 
-		  igl::rbc_precomputation(V, Vb, T, V.cols(), b, rbc_data);
+		  igl::rbc_precomputation(V, T, N, V.cols(), b, rbc_data);
 	  }
 
 	  // Expose the same variable directly
@@ -759,11 +760,11 @@ int main(int argc, char *argv[])
 
 	  ImGui::PushItemWidth(-120);
 	  if (ImGui::Combo("Constraint", (int *)(&rbc_data.constraint), "hard\0\soft\0")) {
-		  igl::rbc_precomputation(V, Vb, T, V.cols(), b, rbc_data);
+		  igl::rbc_precomputation(V, T, N, V.cols(), b, rbc_data);
 	  }
 	  if (ImGui::DragFloat("soft constraint weight", &rbc_data.constraint_weight, 1.0, 0.0, 100.))
 	  {
-		  igl::rbc_precomputation(V, Vb, T, V.cols(), b, rbc_data);
+		  igl::rbc_precomputation(V, T, N, V.cols(), b, rbc_data);
 	  }
 
 	  if (ImGui::Combo("Bone Constraint", (int *)(&rbc_data.bone_constraint), "affine\0rigid\0")) {
@@ -845,7 +846,7 @@ int main(int argc, char *argv[])
 				  b.tail(temp_b.rows()) << temp_b;
 				  bc.conservativeResize(bc.rows() + temp_bc.rows(), Eigen::NoChange);
 				  bc.block(bc.rows() - temp_bc.rows(), 0, temp_bc.rows(), 3) << temp_bc;
-				  igl::rbc_precomputation(V, Vb, T, V.cols(), b, rbc_data);
+				  igl::rbc_precomputation(V, T, N, V.cols(), b, rbc_data);
 
 				  center_of_temp_bc = Eigen::RowVector3d::Zero();
 				  temp_bc_rotate_base = temp_bc;
@@ -882,7 +883,7 @@ int main(int argc, char *argv[])
 						  b.conservativeResize(b.rows() + temp_b.rows());
 						  b.tail(temp_b.rows()) << temp_b;
 						  bc.conservativeResize(bc.rows() + temp_bc.rows(), Eigen::NoChange);
-						  igl::rbc_precomputation(V, Vb, T, V.cols(), b, rbc_data);
+						  igl::rbc_precomputation(V, T, N, V.cols(), b, rbc_data);
 						  return true;
 					  }
 				  }
@@ -905,7 +906,7 @@ int main(int argc, char *argv[])
 		  viewer.data().remove_points(temp_bc);
 		  temp_b.resize(0);
 		  temp_bc.resize(0, 3);
-		  igl::rbc_precomputation(V, Vb, T, V.cols(), b, rbc_data);
+		  igl::rbc_precomputation(V, T, N, V.cols(), b, rbc_data);
 		  return true;
 	  }
 
@@ -937,7 +938,7 @@ int main(int argc, char *argv[])
 			  viewer.data().remove_points(temp_bc);
 			  temp_b.resize(0);
 			  temp_bc.resize(0, 3);
-			  igl::rbc_precomputation(V, Vb, T, V.cols(), b, rbc_data);
+			  igl::rbc_precomputation(V, T, N, V.cols(), b, rbc_data);
 			  vertices_move_enabled = false;
 		  }
 
@@ -964,7 +965,7 @@ int main(int argc, char *argv[])
   //rbc_data.max_iter = 100;
   rbc_data.with_dynamics = true;
   //rbc_data.h = 0.033;
-  igl::rbc_precomputation(V, Vb, T, V.cols(), b, rbc_data);
+  igl::rbc_precomputation(V, T, N, V.cols(), b, rbc_data);
 
   // Plot the mesh
   viewer.data().set_mesh(V, F);
