@@ -846,8 +846,7 @@ namespace glfw
 	  data().T = T;
 	  data().N = N;
 	  data().C = C;
-	  data().b.push_back(b);
-	  data().bc.push_back(bc);
+
 
     igl::serialize(core,"Core",fname.c_str(),true);
     igl::serialize(data(),"Data",fname.c_str());

@@ -48,6 +48,7 @@ Eigen::VectorXi b;
 Eigen::VectorXi N;
 
 int pressed_b;
+int anim_f = 0;
 double anim_t = 0.0;
 double anim_t_dir = 0.033;
 igl::RBCData rbc_data; 
@@ -524,11 +525,19 @@ bool pre_draw(igl::opengl::glfw::Viewer &viewer)
 
 	if (viewer.core.is_animating)
 	{
+		if (viewer.data().bc.size() > 1 && anim_f < viewer.data().bc.size()) {
+			if (anim_f == 0) {
+				viewer.data().remove_points(bc);
+			}
+			bc = viewer.data().bc[anim_f];
+			viewer.data().move_points(bc, Eigen::RowVector3d(1.0, 0.0, 0.0));
+		}
 		igl::rbc_solve(bc, rbc_data, U);
 		viewer.data().set_vertices(U);
 		viewer.data().compute_normals();
 
 		anim_t += anim_t_dir;
+		anim_f++;
 	}
 	return false;
 }
@@ -549,7 +558,8 @@ bool key_down(igl::opengl::glfw::Viewer &viewer, unsigned char key, int mods)
 			bc.block(bc.rows() - temp_bc.rows(), 0, temp_bc.rows(), 3) = temp_bc;
 			b.tail(temp_b.rows()) << temp_b;
 
-
+			viewer.data().b.push_back(b);
+			viewer.data().bc.push_back(bc);
 			viewer.data().set_points(bc, Eigen::RowVector3d(0., 1., 0.));
 			igl::rbc_precomputation(V, T, N, V.cols(), b, rbc_data);
 			temp_b.resize(0);
@@ -724,7 +734,7 @@ int main(int argc, char *argv[])
 	  // Simulation panel
 	// Define next window position + size
 	  ImGui::SetNextWindowPos(ImVec2(180.f * menu.menu_scaling(), 0), ImGuiSetCond_FirstUseEver);
-	  ImGui::SetNextWindowSize(ImVec2(200, 200), ImGuiSetCond_FirstUseEver);
+	  ImGui::SetNextWindowSize(ImVec2(200, 220), ImGuiSetCond_FirstUseEver);
 	  ImGui::Begin(
 		  "Simulation", nullptr
 	  );
@@ -736,6 +746,8 @@ int main(int argc, char *argv[])
 		  bc.resize(0, Eigen::NoChange);
 		  temp_b.resize(0, Eigen::NoChange);
 		  temp_bc.resize(0, Eigen::NoChange);
+		  anim_f = 0;
+		  anim_t = 0.;
 
 		  igl::rbc_precomputation(V, T, N, V.cols(), b, rbc_data);
 	  }
@@ -776,10 +788,48 @@ int main(int argc, char *argv[])
 
 	  }
 	  ImGui::PopItemWidth();
+	  if (ImGui::Button("Output Moving Constraint")) {
+		  // create b and bc by code because it's difficult to 
+		  // specify by viewport operation
+		  if (temp_b.rows() == 0 || temp_bc.rows() == 0) {
+			  std::cerr << "select vertices first" << std::endl;
+		  }
+		  else {
+			  Eigen::RowVector3d cm = Eigen::RowVector3d::Zero(); // center of selected vertices
+			  for (int i = 0; i < temp_bc.rows(); i++)
+			  {
+				  cm += temp_bc.row(i);
+			  }
+			  cm /= temp_bc.rows();
+
+			  int number_of_frames = 100;
+			  Eigen::RowVector3d t;
+			  Eigen::Matrix3d R;
+			  for (int i = 0; i < number_of_frames; i++)
+			  {
+				  double alpha = M_PI / 2 * (double)i / (double)number_of_frames;
+				  double beta = M_PI * (double)i / (double)number_of_frames;
+				  t.x() = 12. * (cos(alpha) - 1.);
+				  t.y() = 12. * sin(alpha);
+				  t.z() = 0.;
+
+				  R = igl::rotation_matrix_from_axis_and_angle(
+					  Eigen::Vector3d(0., 0., 1.),
+					  beta);
+				  Eigen::MatrixXd bc_ith_frame(temp_bc.rows(), temp_bc.cols());
+				  for (int j = 0; j < temp_bc.rows(); j++) {
+					  Eigen::RowVector3d delta = temp_bc.row(j) - cm;
+					  bc_ith_frame.row(j) = delta * R.transpose() + cm + t;
+				  }
+				  viewer.data().b.push_back(temp_b);
+				  viewer.data().bc.push_back(bc_ith_frame);
+			  }
+		  }
+	  }
 	  ImGui::End();
 
 	  // Mesh panel
-	  ImGui::SetNextWindowPos(ImVec2(180.f * menu.menu_scaling(), 200), ImGuiSetCond_FirstUseEver);
+	  ImGui::SetNextWindowPos(ImVec2(180.f * menu.menu_scaling(), 220), ImGuiSetCond_FirstUseEver);
 	  ImGui::SetNextWindowSize(ImVec2(200, 80), ImGuiSetCond_FirstUseEver);
 	  ImGui::Begin(
 		  "Mesh", nullptr
