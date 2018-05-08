@@ -62,7 +62,7 @@ namespace igl
 		nb(0),
 		m(1),
 		G(),
-		energy(RBC_ENERGY_TYPE_RBC),
+		energy(RBC_ENERGY_TYPE_COROT),
 		constraint(SOFT_CONSTRAINT),
 		bone_constraint(RIGID_BONE_CONSTRAINT),
 		with_dynamics(false),

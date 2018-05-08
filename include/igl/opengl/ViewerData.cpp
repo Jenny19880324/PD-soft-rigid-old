@@ -273,7 +273,7 @@ IGL_INLINE void igl::opengl::ViewerData::move_points(const Eigen::MatrixXd& P, c
 {
 	Eigen::MatrixXd P_temp;
 
-	// If P only has tow columns, pad with a column of zeros
+	// If P only has two columns, pad with a column of zeros
 	if (P.cols() == 2)
 	{
 		P_temp = Eigen::MatrixXd::Zero(P.rows(), 3);
@@ -284,6 +284,29 @@ IGL_INLINE void igl::opengl::ViewerData::move_points(const Eigen::MatrixXd& P, c
 	}
 
 	int lastid = points.rows() - P_temp.rows();
+	for (unsigned i = 0; i < P_temp.rows(); ++i) {
+		points.row(lastid + i) << P_temp.row(i), i < C.rows() ? C.row(i) : C.row(C.rows() - 1);
+	}
+	dirty |= MeshGL::DIRTY_OVERLAY_POINTS;
+}
+
+IGL_INLINE void igl::opengl::ViewerData::move_points(
+	const Eigen::MatrixXd &P,
+	const Eigen::MatrixXd &C,
+	int lastid
+)
+{
+	Eigen::MatrixXd P_temp;
+
+	// If P only has two columns, pad with a column of zeros
+	if (P.cols() == 2)
+	{
+		P_temp = Eigen::MatrixXd::Zero(P.rows(), 3);
+		P_temp.block(0, 0, P.rows(), 2) = P;
+	}
+	else {
+		P_temp = P;
+	}
 	for (unsigned i = 0; i < P_temp.rows(); ++i) {
 		points.row(lastid + i) << P_temp.row(i), i < C.rows() ? C.row(i) : C.row(C.rows() - 1);
 	}

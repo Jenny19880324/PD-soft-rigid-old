@@ -254,7 +254,8 @@ IGL_INLINE bool igl::rbc_solve(
 			}
 
 			// constraint the motion of the bone to be rigid.
-			if (data.bone_constraint == RIGID_BONE_CONSTRAINT) {
+			if (data.energy == RBC_ENERGY_TYPE_RBC &&
+				data.bone_constraint == RIGID_BONE_CONSTRAINT) {
 				MatrixXd Ub = U.block(data.nf, 0, data.nb, data.dim);
 				//Eigen::Matrix3d R;
 				//Eigen::RowVector3d t;

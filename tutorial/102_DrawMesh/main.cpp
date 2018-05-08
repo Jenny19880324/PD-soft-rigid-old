@@ -31,6 +31,7 @@ bool vertices_move_enabled = false;
 bool vertices_rotate_enabled = false;
 bool external_force_enabled = false;
 bool gravity_enabled = false;
+bool output_moving_constraints = false;
 
 Eigen::VectorXi temp_b;
 Eigen::Matrix<double, Eigen::Dynamic, 3> temp_bc;
@@ -477,7 +478,7 @@ bool mouse_move(igl::opengl::glfw::Viewer& viewer, int mouse_x, int mouse_y) {
 			viewer.data().set_vertices(U);
 			viewer.data().move_points(temp_bc, Eigen::RowVector3d(1.0, 0.0, 0.0));
 			bc.block(bc.rows() - temp_bc.rows(), 0, temp_bc.rows(), 3) = temp_bc;
-			igl::rbc_precomputation(V, T, N, V.cols(), b, rbc_data);
+			//igl::rbc_precomputation(V, T, N, V.cols(), b, rbc_data);
 			return true;
 		}
 	}
@@ -525,12 +526,15 @@ bool pre_draw(igl::opengl::glfw::Viewer &viewer)
 
 	if (viewer.core.is_animating)
 	{
-		if (viewer.data().bc.size() > 1 && anim_f < viewer.data().bc.size()) {
-			if (anim_f == 0) {
-				viewer.data().remove_points(bc);
-			}
-			bc = viewer.data().bc[anim_f];
-			viewer.data().move_points(bc, Eigen::RowVector3d(1.0, 0.0, 0.0));
+		if (viewer.data().bc.size() > 1 && 
+			anim_f < viewer.data().bc.size()) {
+
+			Eigen::VectorXi b_ith_frame = viewer.data().b[anim_f];
+			Eigen::MatrixX3d bc_ith_frame = viewer.data().bc[anim_f];
+
+			bc.block(0, 0, bc_ith_frame.rows(), 3) << bc_ith_frame;
+			
+			viewer.data().move_points(bc_ith_frame, Eigen::RowVector3d(1.0, 0.0, 0.0), 0);
 		}
 		igl::rbc_solve(bc, rbc_data, U);
 		viewer.data().set_vertices(U);
@@ -558,9 +562,27 @@ bool key_down(igl::opengl::glfw::Viewer &viewer, unsigned char key, int mods)
 			bc.block(bc.rows() - temp_bc.rows(), 0, temp_bc.rows(), 3) = temp_bc;
 			b.tail(temp_b.rows()) << temp_b;
 
-			viewer.data().b.push_back(b);
-			viewer.data().bc.push_back(bc);
-			viewer.data().set_points(bc, Eigen::RowVector3d(0., 1., 0.));
+			// to save it in the scene
+			int number_of_frames = viewer.data().bc.size();
+			if (number_of_frames == 0) {
+				// no saved constraints in the scene now.
+				viewer.data().b.push_back(b);
+				viewer.data().bc.push_back(bc);
+			}
+			else {
+				// append the fixed point constraint 
+				// to the constraints in the scene
+				for (int i = 0; i < number_of_frames; i++)
+				{
+					viewer.data().b[i].conservativeResize(b.rows());
+					viewer.data().bc[i].conservativeResize(bc.rows(), Eigen::NoChange);
+					viewer.data().b[i].tail(temp_b.rows()) << temp_b;
+					viewer.data().bc[i].block(bc.rows() - temp_bc.rows(), 0, temp_bc.rows(), 3) << temp_bc;
+				}
+			}
+
+			viewer.data().remove_points(temp_bc);
+			viewer.data().add_points(temp_bc, Eigen::RowVector3d(0., 1., 0.));
 			igl::rbc_precomputation(V, T, N, V.cols(), b, rbc_data);
 			temp_b.resize(0);
 			temp_bc.resize(0, 3);
@@ -742,6 +764,8 @@ int main(int argc, char *argv[])
 	  if (ImGui::Button("reset")) {
 		  U = V;
 		  viewer.data().remove_points(bc);
+		  viewer.data().b.clear();
+		  viewer.data().bc.clear();
 		  b.resize(0, Eigen::NoChange);
 		  bc.resize(0, Eigen::NoChange);
 		  temp_b.resize(0, Eigen::NoChange);
@@ -810,7 +834,7 @@ int main(int argc, char *argv[])
 				  double alpha = M_PI / 2 * (double)i / (double)number_of_frames;
 				  double beta = M_PI * (double)i / (double)number_of_frames;
 				  t.x() = 12. * (cos(alpha) - 1.);
-				  t.y() = 12. * sin(alpha);
+				  t.y() = 6. * sin(alpha);
 				  t.z() = 0.;
 
 				  R = igl::rotation_matrix_from_axis_and_angle(
@@ -824,6 +848,18 @@ int main(int argc, char *argv[])
 				  viewer.data().b.push_back(temp_b);
 				  viewer.data().bc.push_back(bc_ith_frame);
 			  }
+
+			  Eigen::VectorXi b_first_frame = viewer.data().b[0];
+			  Eigen::MatrixX3d bc_first_frame = viewer.data().bc[0];
+
+			  b.conservativeResize(b.rows() + b_first_frame.rows());
+			  b.block(b.rows() - b_first_frame.rows(), 0, b_first_frame.rows(), 1) << b_first_frame;
+			  bc.conservativeResize(bc.rows() + bc_first_frame.rows(), Eigen::NoChange);
+			  bc.block(bc.rows() - bc_first_frame.rows(), 0, bc_first_frame.rows(), 3) << bc_first_frame;
+			  temp_b.resize(0);
+			  temp_bc.resize(0, Eigen::NoChange);
+			  igl::rbc_precomputation(V, T, N, V.cols(), b, rbc_data);
+			  output_moving_constraints = true;
 		  }
 	  }
 	  ImGui::End();

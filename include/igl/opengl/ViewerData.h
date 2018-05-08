@@ -9,6 +9,10 @@
 #define IGL_VIEWERDATA_H
 
 #include "../igl_inline.h"
+#include <igl/rbc.h>
+#include <igl/RBCEnergyType.h>
+#include <igl/ConstraintType.h>
+#include <igl/BoneConstraintType.h>
 #include "MeshGL.h"
 #include <cassert>
 #include <cstdint>
@@ -95,6 +99,7 @@ public:
     const Eigen::MatrixXd& C);
   IGL_INLINE void add_points(const Eigen::MatrixXd& P,  const Eigen::MatrixXd& C);
   IGL_INLINE void move_points(const Eigen::MatrixXd &P, const Eigen::MatrixXd& C);
+  IGL_INLINE void move_points(const Eigen::MatrixXd &P, const Eigen::MatrixXd& C, int lastid);
   IGL_INLINE void remove_points(const Eigen::MatrixXd &P);
 
   // Sets edges given a list of edge vertices and edge indices. In constrast
@@ -138,6 +143,18 @@ public:
   std::vector<Eigen::Matrix<double, Eigen::Dynamic, 3>> bc; // constrained vertices
   std::vector<Eigen::VectorXi> b;                           // constrained vertices index
   bool gravity_enabled;
+  bool external_force_enabled;
+  bool with_dynamics;
+  int max_iter;
+  RBCEnergyType energy;
+  ConstraintType constraint;
+  BoneConstraintType bone_constraint;
+  double h;
+  float mu;
+  float constraint_weight;
+
+
+  
 
   // Per face attributes
   Eigen::MatrixXd F_normals; // One normal per face
@@ -239,6 +256,15 @@ namespace igl
 	  SERIALIZE_MEMBER(b);
 	  SERIALIZE_MEMBER(bc);
 	  SERIALIZE_MEMBER(gravity_enabled);
+	  SERIALIZE_MEMBER(external_force_enabled);
+	  SERIALIZE_MEMBER(with_dynamics);
+	  SERIALIZE_MEMBER(max_iter);
+	  SERIALIZE_MEMBER(energy);
+	  SERIALIZE_MEMBER(constraint);
+	  SERIALIZE_MEMBER(bone_constraint);
+	  SERIALIZE_MEMBER(h);
+	  SERIALIZE_MEMBER(mu);
+	  SERIALIZE_MEMBER(constraint_weight);
       SERIALIZE_MEMBER(F_normals);
       SERIALIZE_MEMBER(F_material_ambient);
       SERIALIZE_MEMBER(F_material_diffuse);

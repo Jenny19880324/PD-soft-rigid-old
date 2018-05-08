@@ -51,6 +51,9 @@ extern Eigen::Matrix<double, Eigen::Dynamic, 3> bc;
 extern Eigen::VectorXi b;
 extern Eigen::VectorXi N;
 extern igl::RBCData rbc_data;
+extern bool gravity_enabled;
+extern bool external_force_enabled;
+extern bool output_moving_constraints;
 
 // Internal global variables used for glfw event handling
 static igl::opengl::glfw::Viewer * __viewer;
@@ -820,11 +823,26 @@ namespace glfw
 	T = data().T;
 	N = data().N;
 	C = data().C;
+	gravity_enabled = data().gravity_enabled;
+	external_force_enabled = data().external_force_enabled;
+	rbc_data.with_dynamics = data().with_dynamics;
+	rbc_data.max_iter = data().max_iter;
+	rbc_data.energy = data().energy;
+	rbc_data.constraint = data().constraint;
+	rbc_data.bone_constraint = data().bone_constraint;
+	rbc_data.h = data().h;
+	rbc_data.mu = data().mu;
+	rbc_data.constraint_weight = data().constraint_weight;
 
 	if (data().b.size() > 0) {
-		b = data().b[0];
-		bc = data().bc[0];
-		data().add_points(bc, Eigen::RowVector3d(1.0, 0.0, 0.0));
+		Eigen::VectorXi b_first_frame = data().b[0];
+		Eigen::MatrixX3d bc_first_frame = data().bc[0];
+		//data().add_points(bc_first_frame, Eigen::RowVector3d(1.0, 0.0, 0.0));
+
+		b.conservativeResize(b.rows() + b_first_frame.rows());
+		b.block(b.rows() - b_first_frame.rows(), 0, b_first_frame.rows(), 1) << b_first_frame;
+		bc.conservativeResize(bc.rows() + bc_first_frame.rows(), Eigen::NoChange);
+		bc.block(bc.rows() - bc_first_frame.rows(), 0, bc_first_frame.rows(), 3) << bc_first_frame;
 		igl::rbc_precomputation(V, T, N, V.cols(), b, rbc_data);
 	}
 
@@ -846,7 +864,22 @@ namespace glfw
 	  data().T = T;
 	  data().N = N;
 	  data().C = C;
+	  data().gravity_enabled = gravity_enabled;
+	  data().external_force_enabled = external_force_enabled;
+	  data().with_dynamics = rbc_data.with_dynamics;
+	  data().max_iter = rbc_data.max_iter;
+	  data().energy = rbc_data.energy;
+	  data().constraint = rbc_data.constraint;
+	  data().bone_constraint = rbc_data.bone_constraint;
+	  data().h = rbc_data.h;
+	  data().mu = rbc_data.mu;
+	  data().constraint_weight = rbc_data.constraint_weight;
 
+	  if (!output_moving_constraints) {
+		  data().b.push_back(b);
+		  data().bc.push_back(bc);
+	  }
+	  output_moving_constraints = false;
 
     igl::serialize(core,"Core",fname.c_str(),true);
     igl::serialize(data(),"Data",fname.c_str());
