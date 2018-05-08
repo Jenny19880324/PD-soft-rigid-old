@@ -207,7 +207,7 @@ IGL_INLINE bool igl::rbc_solve(
 				const double h = data.h;
 				assert(h != 0);
 				const double dw = 1. / data.mu;
-				Dl = dw * 1./(h*h)*data.M*(-U0-h*data.vel) - data.f_ext;
+				Dl = dw * (1./(h*h)*data.M*(-U0-h*data.vel) - data.f_ext);
 			}
 			
 			Matrix<double, Eigen::Dynamic, 3> B = -data.J * R;

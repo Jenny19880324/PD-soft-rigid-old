@@ -775,7 +775,6 @@ int main(int argc, char *argv[])
 		  anim_t = 0.;
 
 		  igl::rbc_precomputation(V, T, N, V.cols(), b, rbc_data);
-		  std::cout << "rbc_data.mu = " << rbc_data.mu << std::endl;
 	  }
 
 	  // Expose the same variable directly
