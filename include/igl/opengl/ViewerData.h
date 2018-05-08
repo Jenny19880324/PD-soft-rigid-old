@@ -151,10 +151,8 @@ public:
   BoneConstraintType bone_constraint;
   double h;
   float mu;
+  float g;
   float constraint_weight;
-
-
-  
 
   // Per face attributes
   Eigen::MatrixXd F_normals; // One normal per face
@@ -264,6 +262,7 @@ namespace igl
 	  SERIALIZE_MEMBER(bone_constraint);
 	  SERIALIZE_MEMBER(h);
 	  SERIALIZE_MEMBER(mu);
+	  SERIALIZE_MEMBER(g);
 	  SERIALIZE_MEMBER(constraint_weight);
       SERIALIZE_MEMBER(F_normals);
       SERIALIZE_MEMBER(F_material_ambient);

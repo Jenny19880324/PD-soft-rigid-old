@@ -832,6 +832,7 @@ namespace glfw
 	rbc_data.bone_constraint = data().bone_constraint;
 	rbc_data.h = data().h;
 	rbc_data.mu = data().mu;
+	rbc_data.g = data().g;
 	rbc_data.constraint_weight = data().constraint_weight;
 
 	if (data().b.size() > 0) {
@@ -873,6 +874,7 @@ namespace glfw
 	  data().bone_constraint = rbc_data.bone_constraint;
 	  data().h = rbc_data.h;
 	  data().mu = rbc_data.mu;
+	  data().g = rbc_data.g;
 	  data().constraint_weight = rbc_data.constraint_weight;
 
 	  if (!output_moving_constraints) {

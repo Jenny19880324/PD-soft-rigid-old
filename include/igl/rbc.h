@@ -46,6 +46,7 @@ namespace igl
 		Eigen::MatrixXd f_ext, vel, Ab, V, T;
 		double h;
 		float mu;
+		float g;
 		float constraint_weight;
 		int max_iter;
 		Eigen::SparseMatrix<double> J, M;
@@ -69,6 +70,7 @@ namespace igl
 		f_ext(),
 		h(1),
 		mu(1.0),
+		g(-0.0098),
 		constraint_weight(50.0),
 		max_iter(10),
 		J(),

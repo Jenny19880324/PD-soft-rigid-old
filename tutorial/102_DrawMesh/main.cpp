@@ -763,39 +763,47 @@ int main(int argc, char *argv[])
 
 	  if (ImGui::Button("reset")) {
 		  U = V;
-		  viewer.data().remove_points(bc);
-		  viewer.data().b.clear();
-		  viewer.data().bc.clear();
-		  b.resize(0, Eigen::NoChange);
-		  bc.resize(0, Eigen::NoChange);
-		  temp_b.resize(0, Eigen::NoChange);
-		  temp_bc.resize(0, Eigen::NoChange);
+		  viewer.data().set_vertices(U);
+		  //viewer.data().remove_points(bc);
+		  //viewer.data().b.clear();
+		  //viewer.data().bc.clear();
+		  //b.resize(0, Eigen::NoChange);
+		  //bc.resize(0, Eigen::NoChange);
+		  //temp_b.resize(0, Eigen::NoChange);
+		  //temp_bc.resize(0, Eigen::NoChange);
 		  anim_f = 0;
 		  anim_t = 0.;
 
 		  igl::rbc_precomputation(V, T, N, V.cols(), b, rbc_data);
+		  std::cout << "rbc_data.mu = " << rbc_data.mu << std::endl;
 	  }
 
 	  // Expose the same variable directly
 	  ImGui::PushItemWidth(-80);
-	  ImGui::DragFloat("mu", &rbc_data.mu, 0.0, 0.0, 3.0);
+	  if (ImGui::DragFloat("mu", &rbc_data.mu, 0.0, 0.0, 10.0)) {
+		  igl::rbc_precomputation(V, T, N, V.cols(), b, rbc_data);
+	  }
 	  ImGui::PopItemWidth();
 
 	  if (ImGui::Checkbox("external force", &external_force_enabled)) {
 		}
-	  static float g = -0.098;
 	  if (ImGui::Checkbox("gravity", &gravity_enabled)) {
 		  if (gravity_enabled) {
-			  rbc_data.f_ext = Eigen::RowVector3d(0., (double)g, 0.).replicate(V.rows(), 1);
+			  rbc_data.f_ext = Eigen::RowVector3d(0., (double)rbc_data.g, 0.).replicate(V.rows(), 1);
 		  }
 		  else {
-			  rbc_data.f_ext.setZero();
+			  rbc_data.g = 0.;
 		  }
 	  }
 	  ImGui::SameLine();
 	  ImGui::PushItemWidth(-40);
-	  if (ImGui::DragFloat("g", &g, 1.0, -1.0, 0)) {
-		  rbc_data.f_ext = Eigen::RowVector3d(0., (double)g, 0.).replicate(V.rows(), 1);
+	  if (ImGui::DragFloat("g", &rbc_data.g, 1.0, -1.0, 0)) {
+		  if (gravity_enabled) {
+			  rbc_data.f_ext = Eigen::RowVector3d(0., (double)rbc_data.g, 0.).replicate(V.rows(), 1);
+		  }
+		  else {
+			  rbc_data.g = 0.;
+		  }
 	  }
 	  ImGui::PopItemWidth();
 

@@ -37,7 +37,8 @@ IGL_INLINE bool igl::rbc_precomputation(
 	assert((dim == 3 || dim == 2) && "dim should be 2 or 3");
 	data.dim = dim;
 	// Defaults
-	data.f_ext = MatrixXd::Zero(n, data.dim);
+	//data.f_ext = MatrixXd::Zero(n, data.dim);
+	data.f_ext = Eigen::RowVector3d(0., (double)data.g, 0.).replicate(V.rows(), 1);
 	
 	assert(data.dim <= V.cols() && "solve dim should be <= embedding");
 	
@@ -85,14 +86,12 @@ IGL_INLINE bool igl::rbc_precomputation(
 		SparseMatrix<double> DQ = dw * 1./(h * h) * data.M;
 		Q += DQ;
 		// Dummy external forces
-		data.f_ext = MatrixXd::Zero(n, data.dim);
+		//data.f_ext = MatrixXd::Zero(n, data.dim);
+		data.f_ext = Eigen::RowVector3d(0., (double)data.g, 0.).replicate(V.rows(), 1);
 		data.vel = MatrixXd::Zero(n, data.dim);
 	}
 
 	if (eff_energy == RBC_ENERGY_TYPE_RBC) {
-		//data.Vb = Vb;
-		//data.Ab.resize(nb, 4 * data.m);
-		//data.Ab << Vb, MatrixXd::Constant(nb, 1, 1);
 		data.nf = N(0);
 		data.nb = 0;
 		for (int i = 1; i < N.rows(); i++) {
@@ -257,15 +256,6 @@ IGL_INLINE bool igl::rbc_solve(
 			if (data.energy == RBC_ENERGY_TYPE_RBC &&
 				data.bone_constraint == RIGID_BONE_CONSTRAINT) {
 				MatrixXd Ub = U.block(data.nf, 0, data.nb, data.dim);
-				//Eigen::Matrix3d R;
-				//Eigen::RowVector3d t;
-				//Eigen::VectorXd w = Eigen::VectorXd::Ones(data.nb, 1);
-				//fit_rigid_motion(data.Vb, Ub, w, R, t);
-
-				////std::cout << "R = " << R << std::endl;
-				////std::cout << "t = " << t << std::endl;
-				//Ub = data.Vb * R + t.replicate(data.nb, 1);
-				//U.block(data.nf, 0, data.nb, data.dim) = Ub;
 
 				int row = 0;
 				for (int i = 1; i < data.N.size(); i++) {
