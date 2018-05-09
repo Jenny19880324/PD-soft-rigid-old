@@ -274,15 +274,31 @@ void marquee_select_vertices(
 	Eigen::Vector4f t4;
 	for (int i = 0; i < 4; i++) {
 		Eigen::Vector3f d = screen_points[i];
-		float t = dnear / abs(d.z());
-		t3 = t * d;
-		t4 << ratio * t3.x(), t3.y(), t3.z(), 1.0;
+
+		float t;
+		if (viewer.core.orthographic) {
+			// I don't understand why I need to times it with 2.
+			t3 = d * 2;
+			t4 << ratio * t3.x(), t3.y(), -1, 1.0;
+		}
+		else {
+			t = dnear / abs(d.z());
+			t3 = t * d;
+			t4 << ratio * t3.x(), t3.y(), t3.z(), 1.0;
+		}
 		t4 = view_model_inv * t4;
 		frustum_points[i * 2] << t4.x() / t4.w(), t4.y() / t4.w(), t4.z() / t4.w();
 
-		t = dfar / abs(d.z());
-		t3 = t * d;
-		t4 << ratio * t3.x(), t3.y(), t3.z(), 1.0;
+
+		if (viewer.core.orthographic) {
+			t3 = d * 2;
+			t4 << ratio * t3.x(), t3.y(), 1, 1.0;
+		}
+		else {
+			t = dfar / abs(d.z());
+			t3 = t * d;
+			t4 << ratio * t3.x(), t3.y(), t3.z(), 1.0;
+		}
 		t4 = view_model_inv * t4;
 		frustum_points[i * 2 + 1] << t4.x() / t4.w(), t4.y() / t4.w(), t4.z() / t4.w();
 	}
@@ -292,6 +308,10 @@ void marquee_select_vertices(
 	for (int i = 0; i < 4; ++i) {
 		frustum_normals[i] = (frustum_points[i * 2] - frustum_points[i * 2 + 1]).cross(
 			frustum_points[(i * 2 + 2) % 8] - frustum_points[(i * 2 + 3) % 8]);
+		if (viewer.core.orthographic) {
+			frustum_normals[i] = (frustum_points[i * 2] - frustum_points[i * 2 + 1]).cross(
+				frustum_points[(i * 2 + 2) % 8] - frustum_points[i * 2]);
+		}
 		frustum_normals[i].normalize();
 	}
 
@@ -756,7 +776,7 @@ int main(int argc, char *argv[])
 	  // Simulation panel
 	// Define next window position + size
 	  ImGui::SetNextWindowPos(ImVec2(180.f * menu.menu_scaling(), 0), ImGuiSetCond_FirstUseEver);
-	  ImGui::SetNextWindowSize(ImVec2(200, 220), ImGuiSetCond_FirstUseEver);
+	  ImGui::SetNextWindowSize(ImVec2(200, 260), ImGuiSetCond_FirstUseEver);
 	  ImGui::Begin(
 		  "Simulation", nullptr
 	  );
@@ -776,9 +796,16 @@ int main(int argc, char *argv[])
 
 		  igl::rbc_precomputation(V, T, N, V.cols(), b, rbc_data);
 	  }
+	  ImGui::PushItemWidth(-80);
+	  if (ImGui::DragInt("max iterations", &rbc_data.max_iter, 1.0f, 1, 100, "%.0f")) {
+
+	  }
+
+	  if (ImGui::Checkbox("with dynamics", &rbc_data.with_dynamics)) {
+		  igl::rbc_precomputation(V, T, N, V.cols(), b, rbc_data);
+	  }
 
 	  // Expose the same variable directly
-	  ImGui::PushItemWidth(-80);
 	  if (ImGui::DragFloat("mu", &rbc_data.mu, 0.0, 0.0, 10.0)) {
 		  igl::rbc_precomputation(V, T, N, V.cols(), b, rbc_data);
 	  }
@@ -872,7 +899,7 @@ int main(int argc, char *argv[])
 	  ImGui::End();
 
 	  // Mesh panel
-	  ImGui::SetNextWindowPos(ImVec2(180.f * menu.menu_scaling(), 220), ImGuiSetCond_FirstUseEver);
+	  ImGui::SetNextWindowPos(ImVec2(180.f * menu.menu_scaling(), 260), ImGuiSetCond_FirstUseEver);
 	  ImGui::SetNextWindowSize(ImVec2(200, 80), ImGuiSetCond_FirstUseEver);
 	  ImGui::Begin(
 		  "Mesh", nullptr
@@ -1061,7 +1088,7 @@ int main(int argc, char *argv[])
 
   // Precomputation
   //rbc_data.max_iter = 100;
-  rbc_data.with_dynamics = true;
+  //rbc_data.with_dynamics = true;
   //rbc_data.h = 0.033;
   igl::rbc_precomputation(V, T, N, V.cols(), b, rbc_data);
 
