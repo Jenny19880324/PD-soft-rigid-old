@@ -10,6 +10,7 @@
 #include <unordered_map>
 #include <map>
 #include <set>
+#include <iostream>
 
 template <typename Scalar, typename Index>
 IGL_INLINE bool igl::readMESH(
@@ -756,12 +757,16 @@ IGL_INLINE bool igl::readMESH(
 
 	Eigen::PlainObjectBase<DerivedV> rearranged_V;
 	rearranged_V.resize(number_of_vertices, 3);
+	int number_of_vertices_prev_set = 0;
 	for (auto m_it = rigid_vertex_map.begin(); m_it != rigid_vertex_map.end(); m_it++)
 	{
+		if (m_it != rigid_vertex_map.begin()) {
+			number_of_vertices_prev_set += std::prev(m_it)->second.size();
+		}
 		std::set<int> &one_rigid_set = m_it->second;
 		for (auto s_it = one_rigid_set.begin(); s_it != one_rigid_set.end(); s_it++)
 		{
-			int cnt = std::distance(one_rigid_set.begin(), s_it);
+			int cnt = number_of_vertices_prev_set + std::distance(one_rigid_set.begin(), s_it);
 			rearranged_V.row(nf + cnt) = V.row(*s_it);
 			RI[*s_it] = nf + cnt;
 		}
