@@ -24,6 +24,7 @@
 #include <GLFW/glfw3.h>
 #include "tutorial_shared_path.h"
 #include <unordered_set>
+#include <unordered_map>
 
 
 bool vertex_pick_enabled = false;
@@ -336,10 +337,16 @@ void marquee_select_vertices(
 }
 
 void selection_difference(
+	const Eigen::MatrixX3d &minuend_bc,
 	const Eigen::VectorXi &minuend,
 	const Eigen::VectorXi &subtrahend,
-	Eigen::VectorXi &difference)
+	Eigen::VectorXi &difference_b,
+	Eigen::MatrixX3d &difference_bc)
 {
+	std::unordered_map<int, Eigen::RowVector3d> bc_map;
+	for (int i = 0; i < minuend.rows(); i++) {
+		bc_map[minuend(i)] = minuend_bc.row(i);
+	}
 	// difference = minuend - subtrahend
 	int *m = const_cast<int *>(minuend.data());
 	int *s = const_cast<int *>(subtrahend.data());
@@ -356,9 +363,11 @@ void selection_difference(
 	//	std::cout << ' ' << *it;
 	//std::cout << '\n';
 
-	difference.resize(v.size());
+	difference_b.resize(v.size());
+	difference_bc.resize(difference_b.rows(), Eigen::NoChange);
 	for (int i = 0; i < v.size(); i++) {
-		difference(i) = v[i];
+		difference_b(i) = v[i];
+		difference_bc.row(i) = bc_map[v[i]];
 	}
 }
 
@@ -589,20 +598,12 @@ bool mouse_move(igl::opengl::glfw::Viewer& viewer, int mouse_x, int mouse_y) {
 
 		Eigen::VectorXi remained_b;
 		Eigen::MatrixX3d remained_bc;
-		selection_difference(b, deselect_b, remained_b);
-		remained_bc.resize(remained_b.rows(), Eigen::NoChange);
-		for (int i = 0; i < remained_b.rows(); i++) {
-			remained_bc.row(i) = U.row(remained_b(i));
-		}
+		selection_difference(bc, b, deselect_b, remained_b, remained_bc);
 		viewer.data().set_points(remained_bc, Eigen::RowVector3d(0.0, 1.0, 0.0));
 		
 		Eigen::VectorXi remained_temp_b;
 		Eigen::MatrixX3d remained_temp_bc;
-		selection_difference(temp_b, deselect_b, remained_temp_b);
-		remained_temp_bc.resize(remained_temp_b.rows(), Eigen::NoChange);
-		for (int i = 0; i < remained_temp_b.rows(); i++) {
-			remained_temp_bc.row(i) = U.row(remained_temp_b(i));
-		}
+		selection_difference(temp_bc, temp_b, deselect_b, remained_temp_b, remained_temp_bc);
 		viewer.data().add_points(remained_temp_bc, Eigen::RowVector3d(1.0, 0.0, 0.0));
 
 
@@ -1166,6 +1167,7 @@ int main(int argc, char *argv[])
 	  if (vertices_marquee_deselect_enabled) {
 		  marquee.one_corner_set = false;
 		  marquee.two_corners_set = false;
+		  igl::rbc_precomputation(V, T, N, V.cols(), b, rbc_data);
 		  return true;
 	  }
 
