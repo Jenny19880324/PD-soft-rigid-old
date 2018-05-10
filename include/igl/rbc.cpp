@@ -103,6 +103,7 @@ IGL_INLINE bool igl::rbc_precomputation(
 		data.m = N.rows() - 1; // N(0) is the number of vertices of the elastic part
 		assert(data.m > 0);
 		data.Ab.resize(data.nb, 4 * data.m);
+		data.Ab.setZero();
 		int row = 0;
 		for (int i = 1; i < N.rows(); i++)
 		{

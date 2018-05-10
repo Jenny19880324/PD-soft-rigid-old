@@ -7,6 +7,7 @@
 // obtain one at http://mozilla.org/MPL/2.0/.
 #include "is_symmetric.h"
 #include "find.h"
+#include <iostream>
 
 template <typename T>
 IGL_INLINE bool igl::is_symmetric(const Eigen::SparseMatrix<T>& A)
@@ -48,6 +49,15 @@ IGL_INLINE bool igl::is_symmetric(
   {
     return false;
   }
+
+  //debug
+  //for (int k = 0; k < A.outerSize(); ++k)
+  //{
+	 // for (typename Eigen::SparseMatrix<AType>::InnerIterator it(A, k); it; ++it)
+	 // {
+		//  std::cout << it.value() << std::endl;
+	 // }
+  //}
   assert(A.size() != 0);
   SparseMatrix<AType> AT = A.transpose();
   SparseMatrix<AType> AmAT = A-AT;

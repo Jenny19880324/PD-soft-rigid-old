@@ -802,7 +802,7 @@ int main(int argc, char *argv[])
 	  }
 
 	  if (ImGui::Checkbox("with dynamics", &rbc_data.with_dynamics)) {
-		  igl::rbc_precomputation(V, T, N, V.cols(), b, rbc_data);
+
 	  }
 
 	  // Expose the same variable directly
