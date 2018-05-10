@@ -23,10 +23,12 @@
 #include <igl/rotation_matrix_from_axis_and_angle.h>
 #include <GLFW/glfw3.h>
 #include "tutorial_shared_path.h"
+#include <unordered_set>
 
 
 bool vertex_pick_enabled = false;
 bool vertices_marquee_enabled = false;
+bool vertices_marquee_deselect_enabled = false;
 bool vertices_move_enabled = false;
 bool vertices_rotate_enabled = false;
 bool external_force_enabled = false;
@@ -333,6 +335,34 @@ void marquee_select_vertices(
 	}
 }
 
+void selection_difference(
+	const Eigen::VectorXi &minuend,
+	const Eigen::VectorXi &subtrahend,
+	Eigen::VectorXi &difference)
+{
+	// difference = minuend - subtrahend
+	int *m = const_cast<int *>(minuend.data());
+	int *s = const_cast<int *>(subtrahend.data());
+	std::vector<int> v(minuend.rows() + subtrahend.rows());
+	std::vector<int>::iterator it;
+
+	std::sort(m, m + minuend.rows());
+	std::sort(s, s + subtrahend.rows());
+
+	it = std::set_difference(m, m + minuend.rows(), s, s + subtrahend.rows(), v.begin());
+	v.resize(it - v.begin());
+	//std::cout << "The difference has " << v.size() << " elements:\n";
+	//for (it = v.begin(); it != v.end(); ++it)
+	//	std::cout << ' ' << *it;
+	//std::cout << '\n';
+
+	difference.resize(v.size());
+	for (int i = 0; i < v.size(); i++) {
+		difference(i) = v[i];
+	}
+}
+
+
 bool mouse_move(igl::opengl::glfw::Viewer& viewer, int mouse_x, int mouse_y) {
 	if (slice_plane.active && viewer.down) {
 		igl::trackball(
@@ -528,10 +558,58 @@ bool mouse_move(igl::opengl::glfw::Viewer& viewer, int mouse_x, int mouse_y) {
 		marquee_select_vertices(viewer, marquee, U, temp_b);
 		temp_bc.resize(temp_b.size(), 3);
 		for (int i = 0; i < temp_b.size(); i++) {
-			temp_bc.row(i) = V.row(temp_b(i));
+			temp_bc.row(i) = U.row(temp_b(i));
 		}
 
 		viewer.data().add_points(temp_bc, Eigen::RowVector3d(1.0, 0.0, 0.0));
+		return true;
+	}
+
+	if (vertices_marquee_deselect_enabled && marquee.one_corner_set) {
+		marquee.to_x = mouse_x;
+		marquee.to_y = mouse_y;
+		marquee.two_corners_set = true;
+		marquee_gl.dirty = true;
+
+		float w = viewer.core.viewport(2);
+		float h = viewer.core.viewport(3);
+
+		float from_x = 2. * marquee.from_x / w - 1.;
+		float from_y = -2. * marquee.from_y / h + 1.;
+		float to_x = 2. * marquee.to_x / w - 1.;
+		float to_y = -2. * marquee.to_y / h + 1.;
+
+		marquee_gl.V_vbo << from_x, from_y, 0.,
+			to_x, from_y, 0.,
+			to_x, to_y, 0.,
+			from_x, to_y, 0.;
+
+		Eigen::VectorXi deselect_b;
+		marquee_select_vertices(viewer, marquee, U, deselect_b);
+
+		Eigen::VectorXi remained_b;
+		Eigen::MatrixX3d remained_bc;
+		selection_difference(b, deselect_b, remained_b);
+		remained_bc.resize(remained_b.rows(), Eigen::NoChange);
+		for (int i = 0; i < remained_b.rows(); i++) {
+			remained_bc.row(i) = U.row(remained_b(i));
+		}
+		viewer.data().set_points(remained_bc, Eigen::RowVector3d(0.0, 1.0, 0.0));
+		
+		Eigen::VectorXi remained_temp_b;
+		Eigen::MatrixX3d remained_temp_bc;
+		selection_difference(temp_b, deselect_b, remained_temp_b);
+		remained_temp_bc.resize(remained_temp_b.rows(), Eigen::NoChange);
+		for (int i = 0; i < remained_temp_b.rows(); i++) {
+			remained_temp_bc.row(i) = U.row(remained_temp_b(i));
+		}
+		viewer.data().add_points(remained_temp_bc, Eigen::RowVector3d(1.0, 0.0, 0.0));
+
+
+		b = remained_b;
+		bc = remained_bc;
+		temp_b = remained_temp_b;
+		temp_bc = remained_temp_bc;
 		return true;
 	}
 
@@ -553,8 +631,8 @@ bool pre_draw(igl::opengl::glfw::Viewer &viewer)
 			Eigen::MatrixX3d bc_ith_frame = viewer.data().bc[anim_f];
 
 			bc.block(0, 0, bc_ith_frame.rows(), 3) << bc_ith_frame;
-			
-			viewer.data().move_points(bc_ith_frame, Eigen::RowVector3d(1.0, 0.0, 0.0), 0);
+			// green means b is precomputed, it's not temp_b anymore.
+			viewer.data().move_points(bc_ith_frame, Eigen::RowVector3d(0.0, 1.0, 0.0), 0);
 		}
 		igl::rbc_solve(bc, rbc_data, U);
 		viewer.data().set_vertices(U);
@@ -740,12 +818,18 @@ int main(int argc, char *argv[])
 		  if (ImGui::Checkbox("single vertex", &vertex_pick_enabled)) {
 		  }
 		  if (ImGui::Checkbox("marquee vertices", &vertices_marquee_enabled)) {
-			  static bool initialized = false;
-			  if (!initialized) {
-				  marquee_gl.init();
-				  initialized = true;
-			  }
+				marquee_gl.init();
+				if (vertices_marquee_deselect_enabled) {
+					vertices_marquee_deselect_enabled = false;
+				}
 				// should call marquee_gl.free() somewhere.
+		  }
+		  //ImGui::SameLine();
+		  if (ImGui::Checkbox("marquee vertices deselect", &vertices_marquee_deselect_enabled)) {
+			  marquee_gl.init();
+			  if (vertices_marquee_deselect_enabled) {
+				  vertices_marquee_enabled = false;
+			  }
 		  }
 
 		  if (ImGui::Button("clear")) {
@@ -764,11 +848,7 @@ int main(int argc, char *argv[])
 		  }
 	  }
 
-	  // material panel
-	  if (ImGui::Combo("Material", (int *)(&rbc_data.energy), "PD material\0\RBC\0"))
-	  {
-		  igl::rbc_precomputation(V, T, N, V.cols(), b, rbc_data);
-	  }
+
   };
 
   menu.callback_draw_custom_window = [&]()
@@ -776,7 +856,7 @@ int main(int argc, char *argv[])
 	  // Simulation panel
 	// Define next window position + size
 	  ImGui::SetNextWindowPos(ImVec2(180.f * menu.menu_scaling(), 0), ImGuiSetCond_FirstUseEver);
-	  ImGui::SetNextWindowSize(ImVec2(200, 260), ImGuiSetCond_FirstUseEver);
+	  ImGui::SetNextWindowSize(ImVec2(200, 280), ImGuiSetCond_FirstUseEver);
 	  ImGui::Begin(
 		  "Simulation", nullptr
 	  );
@@ -796,6 +876,12 @@ int main(int argc, char *argv[])
 
 		  igl::rbc_precomputation(V, T, N, V.cols(), b, rbc_data);
 	  }
+	  // material panel
+	  if (ImGui::Combo("Material", (int *)(&rbc_data.energy), "PD material\0\RBC\0"))
+	  {
+		  igl::rbc_precomputation(V, T, N, V.cols(), b, rbc_data);
+	  }
+
 	  ImGui::PushItemWidth(-80);
 	  if (ImGui::DragInt("max iterations", &rbc_data.max_iter, 1.0f, 1, 100, "%.0f")) {
 
@@ -899,7 +985,7 @@ int main(int argc, char *argv[])
 	  ImGui::End();
 
 	  // Mesh panel
-	  ImGui::SetNextWindowPos(ImVec2(180.f * menu.menu_scaling(), 260), ImGuiSetCond_FirstUseEver);
+	  ImGui::SetNextWindowPos(ImVec2(180.f * menu.menu_scaling(), 280), ImGuiSetCond_FirstUseEver);
 	  ImGui::SetNextWindowSize(ImVec2(200, 80), ImGuiSetCond_FirstUseEver);
 	  ImGui::Begin(
 		  "Mesh", nullptr
@@ -1020,6 +1106,13 @@ int main(int argc, char *argv[])
 		  marquee.from_y = viewer.current_mouse_y;
 		  return true;
 	  }
+
+	  if (vertices_marquee_deselect_enabled) {
+		  marquee.one_corner_set = true;
+		  marquee.from_x = viewer.current_mouse_x;
+		  marquee.from_y = viewer.current_mouse_y;
+		  return true;
+	  }
 	  return false;
   };
 
@@ -1069,12 +1162,20 @@ int main(int argc, char *argv[])
 
 		  return true;
 	  }
+
+	  if (vertices_marquee_deselect_enabled) {
+		  marquee.one_corner_set = false;
+		  marquee.two_corners_set = false;
+		  return true;
+	  }
+
 	  return false;
   };
 
   viewer.callback_post_draw = [](igl::opengl::glfw::Viewer &viewer)
   {
-	  if (vertices_marquee_enabled && marquee.two_corners_set) {
+	  if ((vertices_marquee_enabled||vertices_marquee_deselect_enabled)
+		  && marquee.two_corners_set) {
 		  marquee_gl.bind();
 		  marquee_gl.draw();
 	  }
