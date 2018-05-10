@@ -39,29 +39,28 @@ IGL_INLINE void igl::rbc_rhs(
 
   J.resize(V.rows(), 3 * F.rows());
   J.setZero();
+  std::vector<Eigen::Triplet<double>> J_triplets;
+  J_triplets.reserve(12 * F.rows());
 for(int i = 0; i < F.rows(); i++) {
 	  	Matrix<double, 3, 3> Dm, Dm_inv_trans;
 		Dm << V(F(i, 0), 0) - V(F(i, 3), 0), V(F(i, 1), 0) - V(F(i, 3), 0), V(F(i, 2), 0) - V(F(i, 3), 0),
 			  V(F(i, 0), 1) - V(F(i, 3), 1), V(F(i, 1), 1) - V(F(i, 3), 1), V(F(i, 2), 1) - V(F(i, 3), 1),
 			  V(F(i, 0), 2) - V(F(i, 3), 2), V(F(i, 1), 2) - V(F(i, 3), 2), V(F(i, 2), 2) - V(F(i, 3), 2);
 		Dm_inv_trans = Dm.inverse().transpose();
-		
-		SparseMatrix<double> Ai(3, V.rows());
-		vector<Triplet<double>> Ai_IJV;
-		Ai_IJV.push_back(Triplet<double>(0, F(i, 0), 1)); Ai_IJV.push_back(Triplet<double>(0, F(i, 3), -1));
-		Ai_IJV.push_back(Triplet<double>(1, F(i, 1), 1)); Ai_IJV.push_back(Triplet<double>(1, F(i, 3), -1));
-		Ai_IJV.push_back(Triplet<double>(2, F(i, 2), 1)); Ai_IJV.push_back(Triplet<double>(2, F(i, 3), -1));
-		Ai.setFromTriplets(Ai_IJV.begin(), Ai_IJV.end());
-		SparseMatrix<double> Gi(3, V.rows());
-		Gi = (Dm_inv_trans * Ai).sparseView();
-		
-		SparseMatrix<double> Si(3, 3 * F.rows());
-		vector<Triplet<double>> Si_IJV;
-		Si_IJV.push_back(Triplet<double>(0, 3 * i + 0, 1));
-		Si_IJV.push_back(Triplet<double>(1, 3 * i + 1, 1));
-		Si_IJV.push_back(Triplet<double>(2, 3 * i + 2, 1));
-		Si.setFromTriplets(Si_IJV.begin(), Si_IJV.end());
-		J += Gi.transpose() * Si;
+
+		for (int row = 0; row < 3; row++) {
+			for (int col = 0; col < 3; col++) {
+				J_triplets.push_back(Eigen::Triplet<double>(F(i, row), 3 * i + col, Dm_inv_trans(col, row)));
+			}
+		}
+		// row = 4
+		for (int col = 0; col < 3; col++) {
+			J_triplets.push_back(Eigen::Triplet<double>(F(i, 3), 3 * i + col,
+				-Dm_inv_trans(col, 0) - Dm_inv_trans(col, 1) - Dm_inv_trans(col, 2)));
+		}
   }
+
+J.setFromTriplets(J_triplets.begin(), J_triplets.end());
+J.makeCompressed();
 }
 
