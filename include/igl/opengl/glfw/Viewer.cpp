@@ -54,6 +54,8 @@ extern igl::RBCData rbc_data;
 extern bool gravity_enabled;
 extern bool external_force_enabled;
 extern bool output_moving_constraints;
+extern int anim_f;
+extern double anim_t;
 
 // Internal global variables used for glfw event handling
 static igl::opengl::glfw::Viewer * __viewer;
@@ -826,6 +828,8 @@ namespace glfw
 	C = data().C;
 	gravity_enabled = data().gravity_enabled;
 	external_force_enabled = data().external_force_enabled;
+	anim_t = 0.0;
+	anim_f = 0;
 	rbc_data.with_dynamics = data().with_dynamics;
 	rbc_data.max_iter = data().max_iter;
 	rbc_data.energy = data().energy;
@@ -837,14 +841,16 @@ namespace glfw
 	rbc_data.constraint_weight = data().constraint_weight;
 
 	if (data().b.size() > 0) {
-		Eigen::VectorXi b_first_frame = data().b[0];
-		Eigen::MatrixX3d bc_first_frame = data().bc[0];
+		b = data().b[0];
+		bc = data().bc[0];
+		//Eigen::VectorXi b_first_frame = data().b[0];
+		//Eigen::MatrixX3d bc_first_frame = data().bc[0];
 		//data().add_points(bc_first_frame, Eigen::RowVector3d(1.0, 0.0, 0.0));
 
-		b.conservativeResize(b.rows() + b_first_frame.rows());
-		b.block(b.rows() - b_first_frame.rows(), 0, b_first_frame.rows(), 1) << b_first_frame;
-		bc.conservativeResize(bc.rows() + bc_first_frame.rows(), Eigen::NoChange);
-		bc.block(bc.rows() - bc_first_frame.rows(), 0, bc_first_frame.rows(), 3) << bc_first_frame;
+		//b.conservativeResize(b.rows() + b_first_frame.rows());
+		//b.block(b.rows() - b_first_frame.rows(), 0, b_first_frame.rows(), 1) << b_first_frame;
+		//bc.conservativeResize(bc.rows() + bc_first_frame.rows(), Eigen::NoChange);
+		//bc.block(bc.rows() - bc_first_frame.rows(), 0, bc_first_frame.rows(), 3) << bc_first_frame;
 		igl::rbc_precomputation(V, T, N, V.cols(), b, rbc_data);
 	}
 
@@ -879,6 +885,8 @@ namespace glfw
 	  data().constraint_weight = rbc_data.constraint_weight;
 
 	  if (!output_moving_constraints) {
+		  data().b.clear();
+		  data().bc.clear();
 		  data().b.push_back(b);
 		  data().bc.push_back(bc);
 	  }
