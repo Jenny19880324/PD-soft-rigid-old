@@ -22,6 +22,7 @@ namespace igl
 		// constraint type of constraint to use
 		// bone_constraint type of bone constraint to use
 		// with_dynamics whether using dynamics (need to call rbc_precomputation 
+		// collision_enabled instantiate springs where collision happens
 		// after changing)
 		// f_ext #V by dim list of external forces
 		// vel #V by dim list of velocities
@@ -43,11 +44,13 @@ namespace igl
 		ConstraintType constraint;
 		BoneConstraintType bone_constraint;
 		bool with_dynamics;
+		bool collision_enabled;
 		Eigen::MatrixXd f_ext, vel, Ab, V, T;
 		double h;
 		float mu;
 		float g;
 		float constraint_weight;
+		float collision_weight;
 		int max_iter;
 		Eigen::SparseMatrix<double> J, M;
 		Eigen::SparseMatrix<double> L;
@@ -67,11 +70,13 @@ namespace igl
 		constraint(SOFT_CONSTRAINT),
 		bone_constraint(RIGID_BONE_CONSTRAINT),
 		with_dynamics(false),
+		collision_enabled(false),
 		f_ext(),
 		h(1),
 		mu(1.0),
 		g(-0.0098),
 		constraint_weight(50.0),
+		collision_weight(50.0),
 		max_iter(10),
 		J(),
 		L(),

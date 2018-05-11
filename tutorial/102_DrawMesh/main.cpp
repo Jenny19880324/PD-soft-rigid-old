@@ -833,20 +833,20 @@ int main(int argc, char *argv[])
 			  }
 		  }
 
-		  if (ImGui::Button("clear")) {
-			  marquee.one_corner_set = false;
-			  marquee.two_corners_set = false;
-			  marquee.from_x = -1;
-			  marquee.from_y = -1;
-			  marquee.to_x = -1;
-			  marquee.to_y = -1;
-			  viewer.data().points.resize(0, 0);
-			  b.resize(0);
-			  bc.resize(0, 3);
-			  temp_b.resize(0);
-			  temp_bc.resize(0, 3);
-			  igl::rbc_precomputation(V, T, N, V.cols(), b, rbc_data);
-		  }
+if (ImGui::Button("clear")) {
+	marquee.one_corner_set = false;
+	marquee.two_corners_set = false;
+	marquee.from_x = -1;
+	marquee.from_y = -1;
+	marquee.to_x = -1;
+	marquee.to_y = -1;
+	viewer.data().points.resize(0, 0);
+	b.resize(0);
+	bc.resize(0, 3);
+	temp_b.resize(0);
+	temp_bc.resize(0, 3);
+	igl::rbc_precomputation(V, T, N, V.cols(), b, rbc_data);
+}
 	  }
 
 
@@ -857,7 +857,7 @@ int main(int argc, char *argv[])
 	  // Simulation panel
 	// Define next window position + size
 	  ImGui::SetNextWindowPos(ImVec2(180.f * menu.menu_scaling(), 0), ImGuiSetCond_FirstUseEver);
-	  ImGui::SetNextWindowSize(ImVec2(200, 280), ImGuiSetCond_FirstUseEver);
+	  ImGui::SetNextWindowSize(ImVec2(200, 320), ImGuiSetCond_FirstUseEver);
 	  ImGui::Begin(
 		  "Simulation", nullptr
 	  );
@@ -889,6 +889,10 @@ int main(int argc, char *argv[])
 	  }
 
 	  if (ImGui::Checkbox("with dynamics", &rbc_data.with_dynamics)) {
+		  igl::rbc_precomputation(V, T, N, V.cols(), b, rbc_data);
+	  }
+
+	  if (ImGui::Checkbox("enable collision", &rbc_data.collision_enabled)) {
 
 	  }
 
@@ -899,9 +903,14 @@ int main(int argc, char *argv[])
 	  ImGui::PopItemWidth();
 
 	  if (ImGui::Checkbox("external force", &external_force_enabled)) {
-		}
+	  }
 	  if (ImGui::Checkbox("gravity", &gravity_enabled)) {
 		  if (gravity_enabled) {
+			  if (rbc_data.with_dynamics == false) {
+				  rbc_data.with_dynamics = true;
+				  igl::rbc_precomputation(V, T, N, V.cols(), b, rbc_data);
+			  }
+			  
 			  rbc_data.f_ext = Eigen::RowVector3d(0., (double)rbc_data.g, 0.).replicate(V.rows(), 1);
 		  }
 		  else {
@@ -927,6 +936,9 @@ int main(int argc, char *argv[])
 	  if (ImGui::DragFloat("soft constraint weight", &rbc_data.constraint_weight, 1.0, 0.0, 100.))
 	  {
 		  igl::rbc_precomputation(V, T, N, V.cols(), b, rbc_data);
+	  }
+	  if (ImGui::DragFloat("collision weight", &rbc_data.collision_weight, 1.0, 0.0, 100.0))
+	  {
 	  }
 
 	  if (ImGui::Combo("Bone Constraint", (int *)(&rbc_data.bone_constraint), "affine\0rigid\0")) {
@@ -986,7 +998,7 @@ int main(int argc, char *argv[])
 	  ImGui::End();
 
 	  // Mesh panel
-	  ImGui::SetNextWindowPos(ImVec2(180.f * menu.menu_scaling(), 280), ImGuiSetCond_FirstUseEver);
+	  ImGui::SetNextWindowPos(ImVec2(180.f * menu.menu_scaling(), 320), ImGuiSetCond_FirstUseEver);
 	  ImGui::SetNextWindowSize(ImVec2(200, 80), ImGuiSetCond_FirstUseEver);
 	  ImGui::Begin(
 		  "Mesh", nullptr
