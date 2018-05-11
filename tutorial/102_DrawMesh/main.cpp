@@ -864,7 +864,14 @@ if (ImGui::Button("clear")) {
 
 	  if (ImGui::Button("reset")) {
 		  U = V;
-		  viewer.data().set_vertices(U);
+		  viewer.data().set_mesh(U, F);
+		  viewer.data().compute_normals();
+
+		  if (viewer.data().bc.size() > 0) {
+			  b = viewer.data().b[0];
+			  bc = viewer.data().bc[0];
+		  }
+		  viewer.data().set_points(bc, Eigen::RowVector3d(0., 1., 0.));
 		  //viewer.data().remove_points(bc);
 		  //viewer.data().b.clear();
 		  //viewer.data().bc.clear();

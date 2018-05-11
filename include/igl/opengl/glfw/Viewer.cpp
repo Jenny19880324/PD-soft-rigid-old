@@ -821,6 +821,7 @@ namespace glfw
 	U = data().V;
 	V = data().VV;
 	T = data().T;
+	F = data().F;
 	N = data().N;
 	C = data().C;
 	gravity_enabled = data().gravity_enabled;
