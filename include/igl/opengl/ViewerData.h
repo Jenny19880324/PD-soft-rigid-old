@@ -144,6 +144,7 @@ public:
   std::vector<Eigen::VectorXi> b;                           // constrained vertices index
   bool gravity_enabled;
   bool external_force_enabled;
+  bool hinge_enabled;
   bool with_dynamics;
   int max_iter;
   RBCEnergyType energy;
@@ -255,6 +256,7 @@ namespace igl
 	  SERIALIZE_MEMBER(bc);
 	  SERIALIZE_MEMBER(gravity_enabled);
 	  SERIALIZE_MEMBER(external_force_enabled);
+	  SERIALIZE_MEMBER(hinge_enabled);
 	  SERIALIZE_MEMBER(with_dynamics);
 	  SERIALIZE_MEMBER(max_iter);
 	  SERIALIZE_MEMBER(energy);

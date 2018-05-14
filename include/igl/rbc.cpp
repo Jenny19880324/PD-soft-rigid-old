@@ -3,6 +3,7 @@
 #include "massmatrix.h"
 #include "fit_rotations.h"
 #include "fit_rigid_motion.h"
+#include "fit_hinged_rigid_motion.h"
 #include "laplacian_matrix.h"
 #include "rbc_rhs.h"
 
@@ -270,8 +271,6 @@ IGL_INLINE bool igl::rbc_solve(
 			// constraint the motion of the bone to be rigid.
 			if (data.energy == RBC_ENERGY_TYPE_RBC &&
 				data.bone_constraint == RIGID_BONE_CONSTRAINT) {
-				MatrixXd Ub = U.block(data.nf, 0, data.nb, data.dim);
-
 				int row = 0;
 				for (int i = 1; i < data.N.size(); i++) {
 					int nb = data.N(i);
@@ -283,7 +282,7 @@ IGL_INLINE bool igl::rbc_solve(
 					fit_rigid_motion(Vb, Ub, w, R, t);
 					Ub = Vb * R + t.replicate(nb, 1);
 					U.block(data.nf + row, 0, nb, data.dim) = Ub;
-				    row += nb;
+					row += nb;
 				}
 			}
 

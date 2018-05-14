@@ -25,6 +25,7 @@
 #include "tutorial_shared_path.h"
 #include <unordered_set>
 #include <unordered_map>
+#include <igl/fit_hinged_rigid_motion.h>
 
 
 bool vertex_pick_enabled = false;
@@ -857,7 +858,7 @@ if (ImGui::Button("clear")) {
 	  // Simulation panel
 	// Define next window position + size
 	  ImGui::SetNextWindowPos(ImVec2(180.f * menu.menu_scaling(), 0), ImGuiSetCond_FirstUseEver);
-	  ImGui::SetNextWindowSize(ImVec2(200, 320), ImGuiSetCond_FirstUseEver);
+	  ImGui::SetNextWindowSize(ImVec2(200, 400), ImGuiSetCond_FirstUseEver);
 	  ImGui::Begin(
 		  "Simulation", nullptr
 	  );
@@ -884,6 +885,39 @@ if (ImGui::Button("clear")) {
 
 		  igl::rbc_precomputation(V, T, N, V.cols(), b, rbc_data);
 	  }
+
+	  if (ImGui::Button("Procrustes")) {
+		  igl::rbc_solve(bc, rbc_data, U);
+		  viewer.data().set_vertices(U);
+		  viewer.data().compute_normals();
+	  }
+	  if (ImGui::Button("Constrained Procrustes")) {
+		  Eigen::Vector3d p = Eigen::Vector3d::Zero();
+		  int nb1 = rbc_data.N(1);
+		  Eigen::MatrixXd Ub1 = U.block(rbc_data.nf, 0, nb1, rbc_data.dim);
+		  Eigen::MatrixXd Vb1 = rbc_data.V.block(rbc_data.nf, 0, nb1, rbc_data.dim);
+		  int nb2 = rbc_data.N(2);
+		  Eigen::MatrixXd Ub2 = U.block(rbc_data.nf + nb1, 0, nb2, rbc_data.dim);
+		  Eigen::MatrixXd Vb2 = rbc_data.V.block(rbc_data.nf + nb1, 0, nb2, rbc_data.dim);
+		  Eigen::Matrix3d R1, R2;
+		  Eigen::RowVector3d t1, t2;
+		  igl::fit_hinged_rigid_motion(
+			  Vb1, Ub1,
+			  Vb2, Ub2,
+			  p,
+			  R1, t1,
+			  R2, t2
+		  );
+
+		  Ub1 = Vb1 * R1 + t1.replicate(nb1, 1);
+		  Ub2 = Vb2 * R2 + t2.replicate(nb2, 1);
+		  U.block(rbc_data.nf, 0, nb1, rbc_data.dim) = Ub1;
+		  U.block(rbc_data.nf + nb1, 0, nb2, rbc_data.dim) = Ub2;
+		  viewer.data().set_vertices(U);
+		  viewer.data().compute_normals();
+	  }
+	  
+	  
 	  // material panel
 	  if (ImGui::Combo("Material", (int *)(&rbc_data.energy), "PD material\0\RBC\0"))
 	  {
@@ -900,6 +934,10 @@ if (ImGui::Button("clear")) {
 	  }
 
 	  if (ImGui::Checkbox("enable collision", &rbc_data.collision_enabled)) {
+
+	  }
+
+	  if (ImGui::Checkbox("enable hinge", &rbc_data.hinge_enabled)) {
 
 	  }
 
@@ -1005,7 +1043,7 @@ if (ImGui::Button("clear")) {
 	  ImGui::End();
 
 	  // Mesh panel
-	  ImGui::SetNextWindowPos(ImVec2(180.f * menu.menu_scaling(), 320), ImGuiSetCond_FirstUseEver);
+	  ImGui::SetNextWindowPos(ImVec2(180.f * menu.menu_scaling(), 400), ImGuiSetCond_FirstUseEver);
 	  ImGui::SetNextWindowSize(ImVec2(200, 80), ImGuiSetCond_FirstUseEver);
 	  ImGui::Begin(
 		  "Mesh", nullptr
@@ -1211,7 +1249,7 @@ if (ImGui::Button("clear")) {
   // Precomputation
   //rbc_data.max_iter = 100;
   //rbc_data.with_dynamics = true;
-  //rbc_data.h = 0.033;
+  rbc_data.h = 0.5;
   igl::rbc_precomputation(V, T, N, V.cols(), b, rbc_data);
 
   // Plot the mesh
