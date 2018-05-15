@@ -723,6 +723,7 @@ int main(int argc, char *argv[])
 			  viewer.data().clear();
 			  viewer.data().set_mesh(U, visible_F);
 			  viewer.data().set_colors(visible_C);
+			  viewer.data().set_points(bc, Eigen::RowVector3d(0., 1., 0.));
 
 			  // Find the bounding box
 			  Eigen::Vector3d m = V.colwise().minCoeff();
@@ -886,7 +887,18 @@ if (ImGui::Button("clear")) {
 		  igl::rbc_precomputation(V, T, N, V.cols(), b, rbc_data);
 	  }
 
-	  if (ImGui::Button("Procrustes")) {
+	  if (ImGui::Button("Individual Procrustes")) {
+		  if (viewer.data().bc.size() > 1 &&
+			  anim_f < viewer.data().bc.size()) {
+
+			  Eigen::VectorXi b_ith_frame = viewer.data().b[anim_f];
+			  Eigen::MatrixX3d bc_ith_frame = viewer.data().bc[anim_f];
+
+			  bc.block(0, 0, bc_ith_frame.rows(), 3) << bc_ith_frame;
+			  // green means b is precomputed, it's not temp_b anymore.
+			  viewer.data().move_points(bc_ith_frame, Eigen::RowVector3d(0.0, 1.0, 0.0), 0);
+			  anim_f++;
+		  }
 		  igl::rbc_solve(bc, rbc_data, U);
 		  viewer.data().set_vertices(U);
 		  viewer.data().compute_normals();
@@ -1012,7 +1024,7 @@ if (ImGui::Button("clear")) {
 				  double alpha = M_PI / 2 * (double)i / (double)number_of_frames;
 				  double beta = M_PI * (double)i / (double)number_of_frames;
 				  t.x() = 12. * (cos(alpha) - 1.);
-				  t.y() = 6. * sin(alpha);
+				  t.y() = 12. * sin(alpha);
 				  t.z() = 0.;
 
 				  R = igl::rotation_matrix_from_axis_and_angle(
@@ -1027,8 +1039,13 @@ if (ImGui::Button("clear")) {
 				  viewer.data().bc.push_back(bc_ith_frame);
 			  }
 
+
 			  Eigen::VectorXi b_first_frame = viewer.data().b[0];
 			  Eigen::MatrixX3d bc_first_frame = viewer.data().bc[0];
+			 /* Eigen::VectorXi b_first_frame = temp_b;
+			  Eigen::MatrixX3d bc_first_frame = temp_bc + Eigen::RowVector3d(6., 0., 0).replicate(temp_bc.rows(), 1);
+			  viewer.data().b.push_back(temp_b);
+			  viewer.data().bc.push_back(bc_first_frame);*/
 
 			  b.conservativeResize(b.rows() + b_first_frame.rows());
 			  b.block(b.rows() - b_first_frame.rows(), 0, b_first_frame.rows(), 1) << b_first_frame;
