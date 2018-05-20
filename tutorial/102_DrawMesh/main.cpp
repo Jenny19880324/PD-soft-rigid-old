@@ -38,6 +38,7 @@ bool gravity_enabled = false;
 bool output_moving_constraints = false;
 
 Eigen::VectorXi temp_b;
+Eigen::MatrixXd temp_U;
 Eigen::Matrix<double, Eigen::Dynamic, 3> temp_bc;
 Eigen::Matrix<double, Eigen::Dynamic, 3> temp_bc_rotate_base;
 Eigen::RowVector3d center_of_temp_bc;
@@ -59,6 +60,16 @@ double anim_t_dir = 0.033;
 igl::RBCData rbc_data; 
 igl::opengl::MarqueeGL marquee_gl;
 igl::opengl::FanGL fan_gl;
+
+
+//debug
+float w1_x, w1_y, w1_z, w2_x, w2_y, w2_z = 0.;
+float l1_x, l1_y, l1_z, l2_x, l2_y, l2_z = 0.;
+Eigen::Matrix3d g_R1 = Eigen::Matrix3d::Identity();
+Eigen::Matrix3d g_R2 = Eigen::Matrix3d::Identity();
+Eigen::RowVector3d g_t1 = Eigen::RowVector3d::Zero();
+Eigen::RowVector3d g_t2 = Eigen::RowVector3d::Zero();
+Eigen::MatrixXd cUb1, cUb2;
 
 struct Marquee
 {
@@ -692,6 +703,62 @@ bool key_down(igl::opengl::glfw::Viewer &viewer, unsigned char key, int mods)
 	return false;
 }
 
+//for debug test use
+void linear_transformation_test(igl::opengl::glfw::Viewer &viewer)
+{
+	Eigen::Matrix3d w1_cross, w2_cross;
+	Eigen::Vector3d l1, l2;
+	w1_cross << 0., -w1_z, w1_y,
+		w1_z, 0., -w1_x,
+		-w1_y, w1_x, 0.;
+	w2_cross << 0., -w2_z, w2_y,
+		w2_z, 0., -w2_x,
+		-w2_y, w2_x, 0.;
+	l1 << l1_x, l1_y, l1_z;
+	l2 << l2_x, l2_y, l2_z;
+
+	//std::cout << "w1_cross = " << w1_cross << std::endl;
+	//std::cout << "w2_cross = " << w2_cross << std::endl;
+	//std::cout << "l1 = " << l1 << std::endl;
+	//std::cout << "l2 = " << l2 << std::endl;
+
+
+	Eigen::Vector3d p = Eigen::Vector3d::Zero();
+	int nb1 = rbc_data.N(1);
+	Eigen::MatrixXd Ub1 = U.block(rbc_data.nf, 0, nb1, rbc_data.dim);
+	Eigen::MatrixXd Vb1 = rbc_data.V.block(rbc_data.nf, 0, nb1, rbc_data.dim);
+	int nb2 = rbc_data.N(2);
+	Eigen::MatrixXd Ub2 = U.block(rbc_data.nf + nb1, 0, nb2, rbc_data.dim);
+	Eigen::MatrixXd Vb2 = rbc_data.V.block(rbc_data.nf + nb1, 0, nb2, rbc_data.dim);
+
+	Eigen::Matrix3d g_R1_trans = g_R1.transpose();
+	Eigen::Matrix3d g_R2_trans = g_R2.transpose();
+
+	//std::cout << "g_R1 = " << g_R1 << std::endl;
+	//std::cout << "g_R2 = " << g_R2 << std::endl;
+	//std::cout << "g_t1 = " << g_t1 << std::endl;
+	//std::cout << "g_t2 = " << g_t2 << std::endl;
+
+	Eigen::Matrix3d tR1 = (g_R1_trans * (Eigen::Matrix3d::Identity() + w1_cross)).transpose();
+	Eigen::RowVector3d tt1 = (g_R1_trans * l1).transpose() + g_t1;
+
+	Eigen::Matrix3d tR2 = (g_R2_trans * (Eigen::Matrix3d::Identity() + w2_cross)).transpose();
+	Eigen::RowVector3d tt2 = (g_R2_trans * l2).transpose() + g_t2;
+
+	Eigen::MatrixXd cUb1 = Vb1 * tR1 + tt1.replicate(nb1, 1);
+	Eigen::MatrixXd cUb2 = Vb2 * tR2 + tt2.replicate(nb2, 1);
+	Eigen::MatrixXd temp_U = U;
+	temp_U.block(rbc_data.nf, 0, nb1, rbc_data.dim) = cUb1;
+	temp_U.block(rbc_data.nf + nb1, 0, nb2, rbc_data.dim) = cUb2;
+	viewer.data().set_vertices(temp_U);
+	viewer.data().compute_normals();
+
+	Eigen::RowVector3d p1 = p.transpose() * tR1 + tt1;
+	Eigen::RowVector3d p2 = p.transpose() * tR2 + tt2;
+	double obj = (p1 - p2).squaredNorm();
+	std::cout << "obj = " << obj << std::endl;
+}
+
 
 int main(int argc, char *argv[])
 {
@@ -886,7 +953,7 @@ if (ImGui::Button("clear")) {
 
 		  igl::rbc_precomputation(V, T, N, V.cols(), b, rbc_data);
 	  }
-
+	  static bool new_target = false;
 	  if (ImGui::Button("Individual Procrustes")) {
 		  if (viewer.data().bc.size() > 1 &&
 			  anim_f < viewer.data().bc.size()) {
@@ -899,10 +966,18 @@ if (ImGui::Button("clear")) {
 			  viewer.data().move_points(bc_ith_frame, Eigen::RowVector3d(0.0, 1.0, 0.0), 0);
 			  anim_f++;
 		  }
+		  if (temp_U.rows() > 0) {
+			  U = temp_U;
+			  std::cout << "U = temp_U" << std::endl;
+		  } 
 		  igl::rbc_solve(bc, rbc_data, U);
 		  viewer.data().set_vertices(U);
 		  viewer.data().compute_normals();
+		  new_target = true;
 	  }
+
+
+
 	  if (ImGui::Button("Constrained Procrustes")) {
 		  Eigen::Vector3d p = Eigen::Vector3d::Zero();
 		  int nb1 = rbc_data.N(1);
@@ -913,19 +988,27 @@ if (ImGui::Button("clear")) {
 		  Eigen::MatrixXd Vb2 = rbc_data.V.block(rbc_data.nf + nb1, 0, nb2, rbc_data.dim);
 		  Eigen::Matrix3d R1, R2;
 		  Eigen::RowVector3d t1, t2;
+		  if (new_target) {
+			  std::cout << "new target" << std::endl;
+			  cUb1 = Ub1;
+			  cUb2 = Ub2;
+		  }
 		  igl::fit_hinged_rigid_motion(
-			  Vb1, Ub1,
-			  Vb2, Ub2,
+			  Vb1, Ub1, cUb1,
+			  Vb2, Ub2, cUb2,
 			  p,
 			  R1, t1,
 			  R2, t2
 		  );
 
-		  Ub1 = Vb1 * R1 + t1.replicate(nb1, 1);
-		  Ub2 = Vb2 * R2 + t2.replicate(nb2, 1);
-		  U.block(rbc_data.nf, 0, nb1, rbc_data.dim) = Ub1;
-		  U.block(rbc_data.nf + nb1, 0, nb2, rbc_data.dim) = Ub2;
-		  viewer.data().set_vertices(U);
+		  cUb1 = Vb1 * R1 + t1.replicate(nb1, 1);
+		  cUb2 = Vb2 * R2 + t2.replicate(nb2, 1);
+		  new_target = false;
+		  temp_U = U;
+		  temp_U.block(rbc_data.nf, 0, nb1, rbc_data.dim) = cUb1;
+		  temp_U.block(rbc_data.nf + nb1, 0, nb2, rbc_data.dim) = cUb2;
+		  igl::rbc_solve(bc, rbc_data, temp_U);
+		  viewer.data().set_vertices(temp_U);
 		  viewer.data().compute_normals();
 	  }
 	  
@@ -1068,6 +1151,51 @@ if (ImGui::Button("clear")) {
 
 	  ImGui::Text("#V %d\n", V.rows());
 	  ImGui::Text("#T %d\n", T.rows());
+	  ImGui::End();
+
+	  // w1, l1, w2, l2 panel
+	  ImGui::SetNextWindowPos(ImVec2(180.f * menu.menu_scaling(), 480), ImGuiSetCond_FirstUseEver);
+	  ImGui::SetNextWindowSize(ImVec2(200, 360), ImGuiSetCond_FirstUseEver);
+	  ImGui::Begin(
+		  "linear transformation", nullptr
+	  );
+	  if (ImGui::DragFloat("w1_x", &w1_x, 1., -10., 10.)) {
+		  linear_transformation_test(viewer);
+	  }
+	  if (ImGui::DragFloat("w1_y", &w1_y, 1., -10., 10.)) {
+		  linear_transformation_test(viewer);
+	  }
+	  if (ImGui::DragFloat("w1_z", &w1_z, 1., -10., 10.)) {
+		  linear_transformation_test(viewer);
+	  }
+	  if (ImGui::DragFloat("w2_x", &w2_x, 1., -10., 10.)) {
+		  linear_transformation_test(viewer);
+	  }
+	  if (ImGui::DragFloat("w2_y", &w2_y, 1., -10., 10.)) {
+		  linear_transformation_test(viewer);
+	  }
+	  if (ImGui::DragFloat("w2_z", &w2_z, 1., -10., 10.)) {
+		  linear_transformation_test(viewer);
+	  }
+	  if (ImGui::DragFloat("l1_x", &l1_x, 1., -10., 10.)) {
+		  linear_transformation_test(viewer);
+	  }
+	  if (ImGui::DragFloat("l1_y", &l1_y, 1., -10., 10.)) {
+		  linear_transformation_test(viewer);
+	  }
+	  if (ImGui::DragFloat("l1_z", &l1_z, 1., -10., 10.)) {
+		  linear_transformation_test(viewer);
+	  }
+	  if (ImGui::DragFloat("l2_x", &l2_x, 1., -10., 10.)) {
+		  linear_transformation_test(viewer);
+	  }
+	  if (ImGui::DragFloat("l2_y", &l2_y, 1., -10., 10.)) {
+		  linear_transformation_test(viewer);
+	  }
+	  if (ImGui::DragFloat("l2_z", &l2_z, 1., -10., 10.)) {
+		  linear_transformation_test(viewer);
+	  }
+
 	  ImGui::End();
   };
 
@@ -1266,7 +1394,7 @@ if (ImGui::Button("clear")) {
   // Precomputation
   //rbc_data.max_iter = 100;
   //rbc_data.with_dynamics = true;
-  rbc_data.h = 0.5;
+  rbc_data.h = 0.1;
   igl::rbc_precomputation(V, T, N, V.cols(), b, rbc_data);
 
   // Plot the mesh

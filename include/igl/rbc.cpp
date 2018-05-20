@@ -7,6 +7,11 @@
 #include "laplacian_matrix.h"
 #include "rbc_rhs.h"
 
+//debug
+extern Eigen::Matrix3d g_R1, g_R2;
+extern Eigen::RowVector3d g_t1, g_t2;
+
+
 template<
 	typename DerivedV,
 	typename DerivedF,
@@ -283,6 +288,16 @@ IGL_INLINE bool igl::rbc_solve(
 					Ub = Vb * R + t.replicate(nb, 1);
 					U.block(data.nf + row, 0, nb, data.dim) = Ub;
 					row += nb;
+
+					//debug
+					if (i == 1) {
+						g_R1 = R;
+						g_t1 = t;
+					}
+					if (i == 2) {
+						g_R2 = R;
+						g_t2 = t;
+					}
 				}
 			}
 

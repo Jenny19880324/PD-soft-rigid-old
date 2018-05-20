@@ -33,8 +33,10 @@ namespace igl
   IGL_INLINE void fit_hinged_rigid_motion(
     const Eigen::PlainObjectBase<DerivedV> & v1,
 	const Eigen::PlainObjectBase<DerivedV> & d1,
+	const Eigen::PlainObjectBase<DerivedV> & cd1,
 	const Eigen::PlainObjectBase<DerivedV> & v2,
 	const Eigen::PlainObjectBase<DerivedV> & d2,
+	const Eigen::PlainObjectBase<DerivedV> & cd2,
 	const Eigen::RowVector3d &p,
     Eigen::Matrix3d &R1,
 	Eigen::RowVector3d &t1,
