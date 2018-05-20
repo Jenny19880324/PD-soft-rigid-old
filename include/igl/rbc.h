@@ -45,7 +45,6 @@ namespace igl
 		BoneConstraintType bone_constraint;
 		bool with_dynamics;
 		bool collision_enabled;
-		bool hinge_enabled;
 		Eigen::MatrixXd f_ext, vel, Ab, V, T;
 		double h;
 		float mu;
@@ -72,7 +71,6 @@ namespace igl
 		bone_constraint(RIGID_BONE_CONSTRAINT),
 		with_dynamics(false),
 		collision_enabled(false),
-		hinge_enabled(false),
 		f_ext(),
 		h(1),
 		mu(1.0),

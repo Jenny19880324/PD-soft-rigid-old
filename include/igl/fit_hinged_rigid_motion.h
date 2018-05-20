@@ -42,6 +42,19 @@ namespace igl
 	Eigen::RowVector3d &t1,
 	Eigen::Matrix3d &R2,
 	Eigen::RowVector3d &t2);
+
+
+  template <typename DerivedV>
+  IGL_INLINE void fit_hinged_rigid_motion(
+	  const Eigen::PlainObjectBase<DerivedV> & v1,
+	  const Eigen::PlainObjectBase<DerivedV> & d1,
+	  const Eigen::PlainObjectBase<DerivedV> & v2,
+	  const Eigen::PlainObjectBase<DerivedV> & d2,
+	  const Eigen::RowVector3d &p,
+	  Eigen::Matrix3d &R1,
+	  Eigen::RowVector3d &t1,
+	  Eigen::Matrix3d &R2,
+	  Eigen::RowVector3d &t2);
 }
 
 #ifndef IGL_STATIC_LIBRARY

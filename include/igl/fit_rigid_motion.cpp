@@ -66,5 +66,4 @@ IGL_INLINE void igl::fit_rigid_motion(
 #ifdef IGL_STATIC_LIBRARY
 // Explicit template instantiation
 template void igl::fit_rigid_motion<Eigen::Matrix<double, -1, -1, 0, -1, -1> >(Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> > const &, Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> > const &, Eigen::Matrix<double, -1, 1, 0, -1, 1> const &, Eigen::Matrix<double, 3, 3, 0, 3, 3> &, Eigen::Matrix<double, 1, 3, 1, 1, 3> &);
-
 #endif

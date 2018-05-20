@@ -828,7 +828,6 @@ namespace glfw
 	C = data().C;
 	gravity_enabled = data().gravity_enabled;
 	external_force_enabled = data().external_force_enabled;
-	rbc_data.hinge_enabled = data().hinge_enabled;
 	anim_t = 0.0;
 	anim_f = 0;
 	rbc_data.with_dynamics = data().with_dynamics;
@@ -876,7 +875,6 @@ namespace glfw
 	  data().gravity_enabled = gravity_enabled;
 	  data().external_force_enabled = external_force_enabled;
 	  data().with_dynamics = rbc_data.with_dynamics;
-	  data().hinge_enabled = rbc_data.hinge_enabled;
 	  data().max_iter = rbc_data.max_iter;
 	  data().energy = rbc_data.energy;
 	  data().constraint = rbc_data.constraint;
