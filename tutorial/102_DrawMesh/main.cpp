@@ -45,13 +45,14 @@ Eigen::RowVector3d center_of_temp_bc;
 Eigen::MatrixXi visible_F;
 Eigen::MatrixXd visible_C;
 
-Eigen::MatrixXd V, U;
+Eigen::MatrixXd V, U, J;
 Eigen::MatrixXi T;
 Eigen::MatrixXi F;
 Eigen::MatrixXd C;
 Eigen::Matrix<double, Eigen::Dynamic, 3> bc;
 Eigen::VectorXi b;
 Eigen::VectorXi N;
+std::vector<std::vector<int>> I;
 
 int pressed_b;
 int anim_f = 0;
@@ -61,15 +62,6 @@ igl::RBCData rbc_data;
 igl::opengl::MarqueeGL marquee_gl;
 igl::opengl::FanGL fan_gl;
 
-
-//debug
-float w1_x, w1_y, w1_z, w2_x, w2_y, w2_z = 0.;
-float l1_x, l1_y, l1_z, l2_x, l2_y, l2_z = 0.;
-Eigen::Matrix3d g_R1 = Eigen::Matrix3d::Identity();
-Eigen::Matrix3d g_R2 = Eigen::Matrix3d::Identity();
-Eigen::RowVector3d g_t1 = Eigen::RowVector3d::Zero();
-Eigen::RowVector3d g_t2 = Eigen::RowVector3d::Zero();
-Eigen::MatrixXd cUb1, cUb2;
 
 struct Marquee
 {
@@ -922,37 +914,37 @@ if (ImGui::Button("clear")) {
 
 
 	  if (ImGui::Button("Constrained Procrustes")) {
-		  Eigen::Vector3d p = Eigen::Vector3d::Zero();
-		  int nb1 = rbc_data.N(1);
-		  Eigen::MatrixXd Ub1 = U.block(rbc_data.nf, 0, nb1, rbc_data.dim);
-		  Eigen::MatrixXd Vb1 = rbc_data.V.block(rbc_data.nf, 0, nb1, rbc_data.dim);
-		  int nb2 = rbc_data.N(2);
-		  Eigen::MatrixXd Ub2 = U.block(rbc_data.nf + nb1, 0, nb2, rbc_data.dim);
-		  Eigen::MatrixXd Vb2 = rbc_data.V.block(rbc_data.nf + nb1, 0, nb2, rbc_data.dim);
-		  Eigen::Matrix3d R1, R2;
-		  Eigen::RowVector3d t1, t2;
-		  if (new_target) {
-			  std::cout << "new target" << std::endl;
-			  cUb1 = Ub1;
-			  cUb2 = Ub2;
-		  }
-		  igl::fit_hinged_rigid_motion(
-			  Vb1, Ub1, cUb1,
-			  Vb2, Ub2, cUb2,
-			  p,
-			  R1, t1,
-			  R2, t2
-		  );
+		  //Eigen::Vector3d p = Eigen::Vector3d::Zero();
+		  //int nb1 = rbc_data.N(1);
+		  //Eigen::MatrixXd Ub1 = U.block(rbc_data.nf, 0, nb1, rbc_data.dim);
+		  //Eigen::MatrixXd Vb1 = rbc_data.V.block(rbc_data.nf, 0, nb1, rbc_data.dim);
+		  //int nb2 = rbc_data.N(2);
+		  //Eigen::MatrixXd Ub2 = U.block(rbc_data.nf + nb1, 0, nb2, rbc_data.dim);
+		  //Eigen::MatrixXd Vb2 = rbc_data.V.block(rbc_data.nf + nb1, 0, nb2, rbc_data.dim);
+		  //Eigen::Matrix3d R1, R2;
+		  //Eigen::RowVector3d t1, t2;
+		  //if (new_target) {
+			 // std::cout << "new target" << std::endl;
+			 // cUb1 = Ub1;
+			 // cUb2 = Ub2;
+		  //}
+		  //igl::fit_hinged_rigid_motion(
+			 // Vb1, Ub1, cUb1,
+			 // Vb2, Ub2, cUb2,
+			 // p,
+			 // R1, t1,
+			 // R2, t2
+		  //);
 
-		  cUb1 = Vb1 * R1 + t1.replicate(nb1, 1);
-		  cUb2 = Vb2 * R2 + t2.replicate(nb2, 1);
-		  new_target = false;
-		  temp_U = U;
-		  temp_U.block(rbc_data.nf, 0, nb1, rbc_data.dim) = cUb1;
-		  temp_U.block(rbc_data.nf + nb1, 0, nb2, rbc_data.dim) = cUb2;
-		  igl::rbc_solve(bc, rbc_data, temp_U);
-		  viewer.data().set_vertices(temp_U);
-		  viewer.data().compute_normals();
+		  //cUb1 = Vb1 * R1 + t1.replicate(nb1, 1);
+		  //cUb2 = Vb2 * R2 + t2.replicate(nb2, 1);
+		  //new_target = false;
+		  //temp_U = U;
+		  //temp_U.block(rbc_data.nf, 0, nb1, rbc_data.dim) = cUb1;
+		  //temp_U.block(rbc_data.nf + nb1, 0, nb2, rbc_data.dim) = cUb2;
+		  //igl::rbc_solve(bc, rbc_data, temp_U);
+		  //viewer.data().set_vertices(temp_U);
+		  //viewer.data().compute_normals();
 	  }
 	  
 	  

@@ -8,6 +8,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #include "ImGuiMenu.h"
 #include <igl/readMESH.h>
+#include <igl/readJOINT.h>
 #include <igl/project.h>
 #include <imgui/imgui.h>
 #include <imgui_impl_glfw_gl3.h>
@@ -16,9 +17,10 @@
 #include <iostream>
 ////////////////////////////////////////////////////////////////////////////////
 
-extern Eigen::MatrixXd V, C;
+extern Eigen::MatrixXd V, C, J;
 extern Eigen::MatrixXi T, F;
 extern Eigen::VectorXi N;
+extern std::vector<std::vector<int>> I;
 
 namespace igl
 {
@@ -69,9 +71,25 @@ IGL_INLINE void ImGuiMenu::shutdown()
 
 IGL_INLINE bool ImGuiMenu::load(std::string filename)
 {
-	igl::readMESH(filename, V, T, F, C, N);
-	viewer->data().VV = V;
-	return true;
+	const size_t pos = filename.find_last_of('.');
+	const std::string ext = filename.substr(pos + 1);
+	if (ext == "mesh") {
+		igl::readMESH(filename, V, T, F, C, N);
+		viewer->data().VV = V;
+		return true;
+	}
+	else if (ext == "joint") {
+
+		igl::readJOINT(filename, I, J);
+		for (int i = 0; i < I.size(); i++) {
+			for (int j = 0; j < I[i].size(); j++) {
+				std::cout << I[i][j] << " ";
+			}
+			std::cout << std::endl;
+		}
+		std::cout << J << std::endl;
+	}
+
 }
 
 IGL_INLINE bool ImGuiMenu::save(std::string filename)

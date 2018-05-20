@@ -13,9 +13,6 @@
 #include <vector>
 #include <Eigen/Sparse>
 
-extern float w1_x, w1_y, w1_z, w2_x, w2_y, w2_z;
-extern float l1_x, l1_y, l1_z, l2_x, l2_y, l2_z;
-
 
 template <typename DerivedV>
 IGL_INLINE void igl::fit_hinged_rigid_motion(
@@ -181,19 +178,6 @@ IGL_INLINE void igl::fit_hinged_rigid_motion(
 		std::cout << "w2 = " << w2 << std::endl;
 		std::cout << "l2 = " << l2 << std::endl;
 
-		//debug 
-		w1_x = w1.x();
-		w1_y = w1.y();
-		w1_z = w1.z();
-		w2_x = w2.x();
-		w2_y = w2.y();
-		w2_z = w2.z();
-		l1_x = l1.x();
-		l1_y = l1.y();
-		l1_z = l1.z();
-		l2_x = l2.x();
-		l2_y = l2.y();
-		l2_z = l2.z();
 		Eigen::Matrix3d w1_cross;
 		Eigen::Matrix3d w2_cross;
 		w1_cross << 0., -w1.z(), w1.y(),
