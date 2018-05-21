@@ -45,7 +45,7 @@ Eigen::RowVector3d center_of_temp_bc;
 Eigen::MatrixXi visible_F;
 Eigen::MatrixXd visible_C;
 
-Eigen::MatrixXd V, U, J;
+Eigen::MatrixXd V, U, P;
 Eigen::MatrixXi T;
 Eigen::MatrixXi F;
 Eigen::MatrixXd C;
@@ -1281,7 +1281,7 @@ if (ImGui::Button("clear")) {
   // Precomputation
   //rbc_data.max_iter = 100;
   //rbc_data.with_dynamics = true;
-  rbc_data.h = 0.1;
+  rbc_data.h = 0.5;
   igl::rbc_precomputation(V, T, N, V.cols(), b, rbc_data);
 
   // Plot the mesh

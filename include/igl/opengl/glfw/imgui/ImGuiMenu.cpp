@@ -17,7 +17,7 @@
 #include <iostream>
 ////////////////////////////////////////////////////////////////////////////////
 
-extern Eigen::MatrixXd V, C, J;
+extern Eigen::MatrixXd V, C, P;
 extern Eigen::MatrixXi T, F;
 extern Eigen::VectorXi N;
 extern std::vector<std::vector<int>> I;
@@ -80,14 +80,15 @@ IGL_INLINE bool ImGuiMenu::load(std::string filename)
 	}
 	else if (ext == "joint") {
 
-		igl::readJOINT(filename, I, J);
+		igl::readJOINT(filename, I, P);
+
 		for (int i = 0; i < I.size(); i++) {
 			for (int j = 0; j < I[i].size(); j++) {
 				std::cout << I[i][j] << " ";
 			}
 			std::cout << std::endl;
 		}
-		std::cout << J << std::endl;
+		std::cout << P << std::endl;
 	}
 
 }

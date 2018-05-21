@@ -45,11 +45,12 @@
 #include <igl/serialize.h>
 #include <igl/rbc.h>
 
-extern Eigen::MatrixXd U, V, C;
+extern Eigen::MatrixXd U, V, C, P;
 extern Eigen::MatrixXi T, F;
 extern Eigen::Matrix<double, Eigen::Dynamic, 3> bc;
 extern Eigen::VectorXi b;
 extern Eigen::VectorXi N;
+extern std::vector<std::vector<int>> I;
 extern igl::RBCData rbc_data;
 extern bool gravity_enabled;
 extern bool external_force_enabled;
@@ -826,6 +827,8 @@ namespace glfw
 	F = data().F;
 	N = data().N;
 	C = data().C;
+	P = data().P;
+	I = data().I;
 	gravity_enabled = data().gravity_enabled;
 	external_force_enabled = data().external_force_enabled;
 	anim_t = 0.0;
@@ -872,6 +875,8 @@ namespace glfw
 	  data().T = T;
 	  data().N = N;
 	  data().C = C;
+	  data().P = P;
+	  data().I = I;
 	  data().gravity_enabled = gravity_enabled;
 	  data().external_force_enabled = external_force_enabled;
 	  data().with_dynamics = rbc_data.with_dynamics;

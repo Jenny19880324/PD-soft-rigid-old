@@ -166,17 +166,10 @@ IGL_INLINE void igl::fit_hinged_rigid_motion(
 		min_quad_with_fixed_precompute(A_s, VectorXi(), Aeq_s, true, solver_data);
 		min_quad_with_fixed_solve(solver_data, B, MatrixX3d(), Beq, Z);
 
-
-
-
 		Eigen::Vector3d w1 = Z.block(0, 0, 3, 1);
 		Eigen::Vector3d l1 = Z.block(3, 0, 3, 1);
 		Eigen::Vector3d w2 = Z.block(6, 0, 3, 1);
 		Eigen::Vector3d l2 = Z.block(9, 0, 3, 1);
-		std::cout << "w1 = " << w1 << std::endl;
-		std::cout << "l1 = " << l1 << std::endl;
-		std::cout << "w2 = " << w2 << std::endl;
-		std::cout << "l2 = " << l2 << std::endl;
 
 		Eigen::Matrix3d w1_cross;
 		Eigen::Matrix3d w2_cross;
@@ -348,7 +341,7 @@ IGL_INLINE void igl::fit_hinged_rigid_motion(
 			VectorXd Z;
 			min_quad_with_fixed_data<double> solver_data;
 			min_quad_with_fixed_precompute(A_s, VectorXi(), Aeq_s, true, solver_data);
-			min_quad_with_fixed_solve(solver_data, B, MatrixX3d(), Beq, Z);
+			min_quad_with_fixed_solve(solver_data, B, VectorXd(), Beq, Z);
 
 			Eigen::Vector3d w1 = Z.block(0, 0, 3, 1);
 			Eigen::Vector3d l1 = Z.block(3, 0, 3, 1);
@@ -379,18 +372,216 @@ IGL_INLINE void igl::fit_hinged_rigid_motion(
 			double obj = (p1 - p2).squaredNorm();
 
 			double dist_1 = (cd1 - d1).squaredNorm() + (cd2 - d2).squaredNorm();
-			std::cout << "dist_1 = " << dist_1 << std::endl;
+			//std::cout << "dist_1 = " << dist_1 << std::endl;
 
 			if (obj < 1e-2) {
-				//return;
+				return;
 			}
 			iter++;
 		}
 }
 
+template <typename DerivedV, typename DerivedN>
+IGL_INLINE void igl::fit_hinged_rigid_motion(
+	const Eigen::PlainObjectBase<DerivedV> & V,
+	const Eigen::PlainObjectBase<DerivedN> & N,
+	const Eigen::PlainObjectBase<DerivedV> & P,
+	const std::vector<std::vector<int>> & I,
+	Eigen::PlainObjectBase<DerivedV> & U)
+{
+	using namespace std;
+	using namespace Eigen;
+
+	int max_iter = 10;
+	int iter = 0;
+	const int dim = 3;
+
+	int number_of_rigid_bodies = N.rows() - 1;
+	int number_of_joints = P.rows();
+	int number_of_constraints = 0;
+	for (int i = 0; i < I.size(); i++) {
+		number_of_constraints += I[i].size() - 1;
+	}
+	std::cout << "number_of_constraints = " << number_of_constraints << std::endl;
+	int nf = N(0);
+	assert(P.rows() == I.size());
+	MatrixXd cU = U;
+
+	MatrixXd A, Aeq;
+	VectorXd B, Beq;
+	A.resize(6 * number_of_rigid_bodies, 6 * number_of_rigid_bodies);
+	Aeq.resize(3 * number_of_constraints, 6 * number_of_rigid_bodies);
+	B.resize(6 * number_of_rigid_bodies, 1);
+	Beq.resize(3 * number_of_constraints, 1);
+	A.setZero(); Aeq.setZero();
+	B.setZero(); Beq.setZero();
+
+	MatrixX3d R, R_trans; // number_of_rigid_bodies * 3 by dim
+	R.resize(3 * number_of_rigid_bodies, Eigen::NoChange);
+	R_trans.resize(3 * number_of_rigid_bodies, Eigen::NoChange);
+	MatrixX3d t; // number_of_rigid_bodies by dim
+	t.resize(number_of_rigid_bodies, Eigen::NoChange);
+
+	while (iter < max_iter) {
+		int nb = nf;
+		for (int b_i = 0; b_i < number_of_rigid_bodies; b_i++) {
+			MatrixXd cUb = cU.block(nb, 0, N(b_i + 1), dim);
+			MatrixXd Ub = U.block(nb, 0, N(b_i + 1), dim);
+			MatrixXd Vb = V.block(nb, 0, N(b_i + 1), dim);
+			VectorXd weight = VectorXd::Ones(N(b_i + 1));
+			Matrix3d Rb;
+			RowVector3d tb;
+			fit_rigid_motion(Vb, cUb, weight, Rb, tb);
+			
+			Matrix3d QbtQb = Matrix3d::Zero();
+			Matrix3d QbtRb = Matrix3d::Zero();
+			Matrix3d RbtQb = Matrix3d::Zero();
+			Matrix3d RbtRb = Matrix3d::Zero();
+			Matrix3d Rb_trans = Rb.transpose();
+			RowVector3d Qbteb = RowVector3d::Zero();
+			RowVector3d Rbteb = RowVector3d::Zero();
+			double ebteb = 0.;
+			R_trans.block(3 * b_i, 0, 3, 3) = Rb_trans;
+			R.block(3 * b_i, 0, 3, 3) = Rb;
+			t.block(b_i, 0, 1, 3) = tb;
+
+			for (int i = 0; i < N(b_i + 1); i++) {
+				double x = Vb.row(i).x();
+				double y = Vb.row(i).y();
+				double z = Vb.row(i).z();
+
+				Matrix3d v_cross;
+				v_cross << 0., -z, y,
+					z, 0., -x,
+					-y, x, 0.;
+
+				Matrix3d Qb = Rb_trans * v_cross;
+				Matrix3d Qb_trans = Qb.transpose();
+
+				QbtQb += Qb_trans * Qb;
+				QbtRb += Qb_trans * Rb_trans;
+				RbtQb += Rb * Qb;
+				RbtRb += Rb * Rb_trans;
+
+				RowVector3d eb = Vb.row(i) * Rb + tb - Ub.row(i);
+				Qbteb += eb * Qb;
+				Rbteb += eb * Rb_trans;
+				ebteb += eb * eb.transpose();
+
+				// construct A 
+				// todo use triplets, might be faster
+				A.block(6 * b_i    , 6 * b_i    , 3, 3) = QbtQb;
+				A.block(6 * b_i    , 6 * b_i + 3, 3, 3) = -QbtRb;
+				A.block(6 * b_i + 3, 6 * b_i    , 3, 3) = -RbtQb;
+				A.block(6 * b_i + 3, 6 * b_i + 3, 3, 3) = RbtRb;
+
+				// construct B
+				B.block(6 * b_i    , 0, 3, 1) = -Qbteb.transpose();
+				B.block(6 * b_i + 3, 0, 3, 1) = Rbteb.transpose();
+			}
+			nb += N(b_i + 1);
+		}
+		
+		int constraint_idx = 0;
+		for (int j_i = 0; j_i < number_of_joints; j_i++)
+		{
+			const RowVector3d p = P.row(j_i);
+			double x = P.row(j_i).x();
+			double y = P.row(j_i).y();
+			double z = P.row(j_i).z();
+
+			Matrix3d p_cross;
+			p_cross << 0., -z, y,
+						z, 0., -x,
+						-y, x, 0.;
+
+			int idx_1 = I[j_i][0];
+			Matrix3d R1_trans = R_trans.block(idx_1 * 3, 0, 3, 3);
+			Matrix3d R1 = R.block(idx_1 * 3, 0, 3, 3);
+			RowVector3d t1 = t.block(idx_1, 0, 1, 3);
+			Aeq.block(3 * constraint_idx, 6 * idx_1    , 3, 3) = R1_trans * p_cross;
+			Aeq.block(3 * constraint_idx, 6 * idx_1 + 3, 3, 3) = -R1_trans;
+			for (int i = 1; i < I[j_i].size(); i++) {
+				int idx_2 = I[j_i][i];
+				Matrix3d R2_trans = R_trans.block(idx_2 * 3, 0, 3, 3);
+				Matrix3d R2 = R.block(idx_2 * 3, 0, 3, 3);
+				RowVector3d t2 = t.block(idx_2, 0, 1, 3);
+				Aeq.block(3 * constraint_idx, 6 * idx_2    , 3, 3) = -R2_trans * p_cross;
+				Aeq.block(3 * constraint_idx, 6 * idx_2 + 3, 3, 3) = R2_trans;
+				Beq.block(3 * constraint_idx, 0, 3, 1) = (p * (R1 - R2) + t1 - t2).transpose();
+				constraint_idx++;
+			}
+		}
+
+		SparseMatrix<double> A_s = A.sparseView();
+		SparseMatrix<double> Aeq_s = Aeq.sparseView();
+
+		VectorXd Z;
+		min_quad_with_fixed_data<double> solver_data;
+		min_quad_with_fixed_precompute(A_s, VectorXi(), Aeq_s, true, solver_data);
+		min_quad_with_fixed_solve(solver_data, B, VectorXd(), Beq, Z);
+
+		//std::cout << "A = " << A << std::endl;
+		//std::cout << "B = " << B << std::endl;
+		//std::cout << "Aeq = " << Aeq << std::endl;
+		//std::cout << "Beq = " << Beq << std::endl;
+
+		nb = nf;
+		double dist = 0.;
+		for (int b_i = 0; b_i < number_of_rigid_bodies; b_i++) {
+			Vector3d wb = Z.block(b_i * 6    , 0, 3, 1);
+			Vector3d lb = Z.block(b_i * 6 + 3, 0, 3, 1);
+
+			Matrix3d wb_cross;
+			wb_cross << 0., -wb.z(), wb.y(),
+				wb.z(), 0., -wb.x(),
+				-wb.y(), wb.x(), 0.;
+
+			Matrix3d Rb_trans = R_trans.block(b_i * 3, 0, 3, 3);
+			Matrix3d Rb = (Rb_trans * (Matrix3d::Identity() + wb_cross)).transpose();
+			RowVector3d tb = (Rb_trans * lb).transpose() + t.block(b_i, 0, 1, 3);
+			R.block(b_i * 3, 0, 3, 3) = Rb;
+			R_trans.block(b_i * 3, 0, 3, 3) = Rb.transpose();
+
+			MatrixXd Vb = V.block(nb, 0, N(b_i + 1), dim);
+			MatrixXd cUb = Vb * Rb + tb.replicate(N(b_i + 1), 1);
+			MatrixXd Ub = U.block(nb, 0, N(b_i + 1), dim);
+		    cU.block(nb, 0, N(b_i + 1), dim) = cUb;
+			dist += (cUb - Ub).squaredNorm();
+			nb += N(b_i + 1);
+		}
+		std::cout << "dist = " << dist << std::endl;
+
+		double obj = 0.;
+		for (int j_i = 0; j_i < number_of_joints; j_i++)
+		{
+			const RowVector3d p = P.row(j_i);
+			int idx_1 = I[j_i][0];
+			Matrix3d R1 = R.block(idx_1 * 3, 0, 3, 3);
+			RowVector3d t1 = t.block(idx_1, 0, 1, 3);
+			RowVector3d p1 = p * R1 + t1;
+			for (int i = 1; i < I[j_i].size(); i++) {
+				int idx_2 = I[j_i][i];
+				Matrix3d R2 = R.block(idx_2 * 3, 0, 3, 3);
+				RowVector3d t2 = t.block(idx_2, 0, 1, 3);
+				RowVector3d  p2 = p * R2 + t2;
+				obj += (p1 - p2).squaredNorm();
+			}
+		}
+		std::cout << "obj = " << obj << std::endl;
+
+		if (obj < 1e-2) {
+			break;
+		}
+		iter++;
+	}
+	U = cU;
+}
+
+
 #ifdef IGL_STATIC_LIBRARY
 template void igl::fit_hinged_rigid_motion<Eigen::Matrix<double, -1, -1, 0, -1, -1> >(class Eigen::PlainObjectBase<class Eigen::Matrix<double, -1, -1, 0, -1, -1> > const &, class Eigen::PlainObjectBase<class Eigen::Matrix<double, -1, -1, 0, -1, -1> > const &, class Eigen::PlainObjectBase<class Eigen::Matrix<double, -1, -1, 0, -1, -1> > const &, class Eigen::PlainObjectBase<class Eigen::Matrix<double, -1, -1, 0, -1, -1> > const &, class Eigen::PlainObjectBase<class Eigen::Matrix<double, -1, -1, 0, -1, -1> > const &, Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> > const &, Eigen::Matrix<double, 1, 3, 1, 1, 3> const &, Eigen::Matrix<double, 3, 3, 0, 3, 3> &, Eigen::Matrix<double, 1, 3, 1, 1, 3> &, Eigen::Matrix<double, 3, 3, 0, 3, 3> &, Eigen::Matrix<double, 1, 3, 1, 1, 3> &);
 template void igl::fit_hinged_rigid_motion<Eigen::Matrix<double,-1,-1,0,-1,-1> >(Eigen::PlainObjectBase<Eigen::Matrix<double,-1,-1,0,-1,-1> > const &, Eigen::PlainObjectBase<Eigen::Matrix<double,-1,-1,0,-1,-1> > const &,Eigen::PlainObjectBase<Eigen::Matrix<double,-1,-1,0,-1,-1> > const &,Eigen::PlainObjectBase<Eigen::Matrix<double,-1,-1,0,-1,-1> > const &,Eigen::Matrix<double,1,3,1,1,3> const &,Eigen::Matrix<double,3,3,0,3,3> &,Eigen::Matrix<double,1,3,1,1,3> &,Eigen::Matrix<double,3,3,0,3,3> &,Eigen::Matrix<double,1,3,1,1,3> &);
-
-
+template void igl::fit_hinged_rigid_motion<Eigen::Matrix<double, -1, -1, 0, -1, -1>, Eigen::Matrix<int, -1, 1, 0, -1, 1> >(Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> > const &, Eigen::PlainObjectBase<Eigen::Matrix<int, -1, 1, 0, -1, 1> > const &, Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> > const &, std::vector<std::vector<int, std::allocator<int> >, std::allocator< std::vector<int, std::allocator<int> > > > const &, Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> > &);
+//template void igl::fit_hinged_rigid_motion<Eigen::Matrix<double, -1, -1, 0, -1, -1>, Eigen::Matrix<int, -1, 1, 0, -1, 1> >(Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> > const &, Eigen::PlainObjectBase<Eigen::Matrix<int, -1, 1, 0, -1, 1> > const &, Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> > const &, std::vector<std::vector<int, std::allocator<int> >, std::allocator<std::vector<int, std::allocator<int> > > > const &, Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> > &);
 #endif

@@ -8,6 +8,9 @@
 #include "rbc_rhs.h"
 
 
+extern Eigen::MatrixXd P;
+extern std::vector<std::vector<int>> I;
+
 template<
 	typename DerivedV,
 	typename DerivedF,
@@ -290,28 +293,29 @@ IGL_INLINE bool igl::rbc_solve(
 			// only works for the 2 rigid body case
 			if (data.energy == RBC_ENERGY_TYPE_RBC &&
 				data.bone_constraint == CONSTRAINED_BONE_CONSTRAINT) {
-				Eigen::Vector3d p = Eigen::Vector3d::Zero();
-				int nb1 = data.N(1);
-				int nb2 = data.N(2);
-				Eigen::MatrixXd Ub1 = U.block(data.nf, 0, nb1, data.dim);
-				Eigen::MatrixXd Ub2 = U.block(data.nf + nb1, 0, nb2, data.dim);
-				Eigen::MatrixXd Vb1 = data.V.block(data.nf, 0, nb1, data.dim);
-				Eigen::MatrixXd Vb2 = data.V.block(data.nf + nb1, 0, nb2, data.dim);
-				Eigen::Matrix3d R1, R2;
-				Eigen::RowVector3d t1, t2;
+				//Eigen::Vector3d p = Eigen::Vector3d::Zero();
+				//int nb1 = data.N(1);
+				//int nb2 = data.N(2);
+				//Eigen::MatrixXd Ub1 = U.block(data.nf, 0, nb1, data.dim);
+				//Eigen::MatrixXd Ub2 = U.block(data.nf + nb1, 0, nb2, data.dim);
+				//Eigen::MatrixXd Vb1 = data.V.block(data.nf, 0, nb1, data.dim);
+				//Eigen::MatrixXd Vb2 = data.V.block(data.nf + nb1, 0, nb2, data.dim);
+				//Eigen::Matrix3d R1, R2;
+				//Eigen::RowVector3d t1, t2;
 
-				igl::fit_hinged_rigid_motion(
-					Vb1, Ub1,
-					Vb2, Ub2,
-					p,
-					R1, t1,
-					R2, t2
-				);
+				//igl::fit_hinged_rigid_motion(
+				//	Vb1, Ub1,
+				//	Vb2, Ub2,
+				//	p,
+				//	R1, t1,
+				//	R2, t2
+				//);
 
-				Ub1 = Vb1 * R1 + t1.replicate(nb1, 1);
-				Ub2 = Vb2 * R2 + t2.replicate(nb2, 1);
-				U.block(data.nf, 0, nb1, data.dim) = Ub1;
-				U.block(data.nf + nb1, 0, nb2, data.dim) = Ub2;
+				//Ub1 = Vb1 * R1 + t1.replicate(nb1, 1);
+				//Ub2 = Vb2 * R2 + t2.replicate(nb2, 1);
+				//U.block(data.nf, 0, nb1, data.dim) = Ub1;
+				//U.block(data.nf + nb1, 0, nb2, data.dim) = Ub2;
+				fit_hinged_rigid_motion(data.V, data.N, P, I, U);
 			}
 
 			iter++;

@@ -37,6 +37,8 @@ namespace igl
 		// b list of boundary indices into V
 		// N list of regional vertex indices. (nf, nb1 ,nb2, ...)
 		// dim dimension being used for solving
+		// I list of rigid body index involved in joint constraint 
+		// P joint constraint position
 		int n, nf, nb, m;
 		Eigen::VectorXi G;
 		Eigen::MatrixXi F;
@@ -122,6 +124,7 @@ namespace igl
 		const Eigen::PlainObjectBase<Derivedbc> &bc,
 		RBCData & data,
 		Eigen::PlainObjectBase<DerivedU> & U);
+
 }; // namespace igl
 
 #endif

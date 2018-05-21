@@ -9,6 +9,7 @@
 #define IGL_FIT_HINGED_RIGID_MOTION_H
 #include "igl_inline.h"
 #include <Eigen/Core>
+#include <vector>
 
 namespace igl
 {
@@ -55,6 +56,15 @@ namespace igl
 	  Eigen::RowVector3d &t1,
 	  Eigen::Matrix3d &R2,
 	  Eigen::RowVector3d &t2);
+
+
+  template <typename DerivedV, typename DerivedN>
+  IGL_INLINE void fit_hinged_rigid_motion(
+	  const Eigen::PlainObjectBase<DerivedV> & V,
+	  const Eigen::PlainObjectBase<DerivedN> & N,
+	  const Eigen::PlainObjectBase<DerivedV> & P,
+	  const std::vector<std::vector<int>> & I,
+	  Eigen::PlainObjectBase<DerivedV> & U);
 }
 
 #ifndef IGL_STATIC_LIBRARY
