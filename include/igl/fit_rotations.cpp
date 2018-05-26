@@ -86,8 +86,8 @@ IGL_INLINE void igl::fit_rotations(
 		Mat3 ri;
 		Mat3 ti, ui, vi;
 		Vec3 _;
-		igl::polar_svd(si, ri, ti, ui, _, vi);
-		//polar_svd3x3(si, ri);
+		//igl::polar_svd(si, ri, ti, ui, _, vi);
+		polar_svd3x3(si, ri);
 		assert(ri.determinant() >= 0);
 		R.block(r * dim, 0, dim, dim) = ri.transpose();
 	}

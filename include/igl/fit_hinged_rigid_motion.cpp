@@ -372,7 +372,7 @@ IGL_INLINE void igl::fit_hinged_rigid_motion(
 			double obj = (p1 - p2).squaredNorm();
 
 			double dist_1 = (cd1 - d1).squaredNorm() + (cd2 - d2).squaredNorm();
-			//std::cout << "dist_1 = " << dist_1 << std::endl;
+			std::cout << "dist_1 = " << dist_1 << std::endl;
 
 			if (obj < 1e-2) {
 				return;
@@ -402,7 +402,7 @@ IGL_INLINE void igl::fit_hinged_rigid_motion(
 	for (int i = 0; i < I.size(); i++) {
 		number_of_constraints += I[i].size() - 1;
 	}
-	std::cout << "number_of_constraints = " << number_of_constraints << std::endl;
+	//std::cout << "number_of_constraints = " << number_of_constraints << std::endl;
 	int nf = N(0);
 	assert(P.rows() == I.size());
 	MatrixXd cU = U;
@@ -550,7 +550,7 @@ IGL_INLINE void igl::fit_hinged_rigid_motion(
 			dist += (cUb - Ub).squaredNorm();
 			nb += N(b_i + 1);
 		}
-		std::cout << "dist = " << dist << std::endl;
+		//std::cout << "dist = " << dist << std::endl;
 
 		double obj = 0.;
 		for (int j_i = 0; j_i < number_of_joints; j_i++)
@@ -568,9 +568,9 @@ IGL_INLINE void igl::fit_hinged_rigid_motion(
 				obj += (p1 - p2).squaredNorm();
 			}
 		}
-		std::cout << "obj = " << obj << std::endl;
+		//std::cout << "obj = " << obj << std::endl;
 
-		if (obj < 1e-2) {
+		if (obj < 1e-6) {
 			break;
 		}
 		iter++;
