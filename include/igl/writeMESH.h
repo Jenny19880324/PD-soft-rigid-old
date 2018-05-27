@@ -49,6 +49,25 @@ namespace igl
     const Eigen::PlainObjectBase<DerivedV> & V, 
     const Eigen::PlainObjectBase<DerivedT> & T,
     const Eigen::PlainObjectBase<DerivedF> & F);
+
+
+  // Templates:
+  //   DerivedV  real-value: i.e. from MatrixXd
+  //   DerivedT  integer-value: i.e. from MatrixXi
+  //   DerivedF  integer-value: i.e. from MatrixXi
+  // Input:
+  //   mesh_file_name  path of .mesh file
+  //   V  eigen double matrix #V by 3
+  //   T  eigen int matrix #T by 4
+  //   F  eigen int matrix #F by 3
+  //   A  eigen int vector #T by 1, region attribute
+  template <typename DerivedV, typename DerivedT, typename DerivedF>
+  IGL_INLINE bool writeMESH(
+	  const std::string str,
+	  const Eigen::PlainObjectBase<DerivedV> & V,
+	  const Eigen::PlainObjectBase<DerivedT> & T,
+	  const Eigen::PlainObjectBase<DerivedF> & F,
+	  const Eigen::VectorXi & A);
 }
 
 #ifndef IGL_STATIC_LIBRARY

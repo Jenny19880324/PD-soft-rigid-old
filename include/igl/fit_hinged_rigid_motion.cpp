@@ -12,6 +12,7 @@
 #include "polar_svd.h"
 #include <vector>
 #include <Eigen/Sparse>
+#include <omp.h>
 
 
 template <typename DerivedV>
@@ -403,7 +404,11 @@ IGL_INLINE void igl::fit_hinged_rigid_motion(
 		number_of_constraints += I[i].size() - 1;
 	}
 	//std::cout << "number_of_constraints = " << number_of_constraints << std::endl;
-	int nf = N(0);
+	VectorXi acum_N(number_of_rigid_bodies);
+	acum_N(0) = N(0);
+	for (int b_i = 1; b_i < number_of_rigid_bodies; b_i++) {
+		acum_N(b_i) = acum_N(b_i - 1) + N(b_i);
+	}
 	assert(P.rows() == I.size());
 	MatrixXd cU = U;
 
@@ -423,11 +428,11 @@ IGL_INLINE void igl::fit_hinged_rigid_motion(
 	t.resize(number_of_rigid_bodies, Eigen::NoChange);
 
 	while (iter < max_iter) {
-		int nb = nf;
+		#pragma omp parallel for
 		for (int b_i = 0; b_i < number_of_rigid_bodies; b_i++) {
-			MatrixXd cUb = cU.block(nb, 0, N(b_i + 1), dim);
-			MatrixXd Ub = U.block(nb, 0, N(b_i + 1), dim);
-			MatrixXd Vb = V.block(nb, 0, N(b_i + 1), dim);
+			MatrixXd cUb = cU.block(acum_N(b_i), 0, N(b_i + 1), dim);
+			MatrixXd Ub = U.block(acum_N(b_i), 0, N(b_i + 1), dim);
+			MatrixXd Vb = V.block(acum_N(b_i), 0, N(b_i + 1), dim);
 			VectorXd weight = VectorXd::Ones(N(b_i + 1));
 			Matrix3d Rb;
 			RowVector3d tb;
@@ -479,10 +484,9 @@ IGL_INLINE void igl::fit_hinged_rigid_motion(
 				B.block(6 * b_i    , 0, 3, 1) = -Qbteb.transpose();
 				B.block(6 * b_i + 3, 0, 3, 1) = Rbteb.transpose();
 			}
-			nb += N(b_i + 1);
 		}
 		
-		int constraint_idx = 0;
+		#pragma omp parallel for
 		for (int j_i = 0; j_i < number_of_joints; j_i++)
 		{
 			const RowVector3d p = P.row(j_i);
@@ -499,6 +503,10 @@ IGL_INLINE void igl::fit_hinged_rigid_motion(
 			Matrix3d R1_trans = R_trans.block(idx_1 * 3, 0, 3, 3);
 			Matrix3d R1 = R.block(idx_1 * 3, 0, 3, 3);
 			RowVector3d t1 = t.block(idx_1, 0, 1, 3);
+			int constraint_idx = 0;
+			for (int i = 0; i < j_i; i++) {
+				constraint_idx += I[j_i].size() - 1;
+			}
 			Aeq.block(3 * constraint_idx, 6 * idx_1    , 3, 3) = R1_trans * p_cross;
 			Aeq.block(3 * constraint_idx, 6 * idx_1 + 3, 3, 3) = -R1_trans;
 			for (int i = 1; i < I[j_i].size(); i++) {
@@ -521,13 +529,8 @@ IGL_INLINE void igl::fit_hinged_rigid_motion(
 		min_quad_with_fixed_precompute(A_s, VectorXi(), Aeq_s, true, solver_data);
 		min_quad_with_fixed_solve(solver_data, B, VectorXd(), Beq, Z);
 
-		//std::cout << "A = " << A << std::endl;
-		//std::cout << "B = " << B << std::endl;
-		//std::cout << "Aeq = " << Aeq << std::endl;
-		//std::cout << "Beq = " << Beq << std::endl;
-
-		nb = nf;
 		double dist = 0.;
+		#pragma omp parallel for
 		for (int b_i = 0; b_i < number_of_rigid_bodies; b_i++) {
 			Vector3d wb = Z.block(b_i * 6    , 0, 3, 1);
 			Vector3d lb = Z.block(b_i * 6 + 3, 0, 3, 1);
@@ -543,12 +546,11 @@ IGL_INLINE void igl::fit_hinged_rigid_motion(
 			R.block(b_i * 3, 0, 3, 3) = Rb;
 			R_trans.block(b_i * 3, 0, 3, 3) = Rb.transpose();
 
-			MatrixXd Vb = V.block(nb, 0, N(b_i + 1), dim);
+			MatrixXd Vb = V.block(acum_N(b_i), 0, N(b_i + 1), dim);
 			MatrixXd cUb = Vb * Rb + tb.replicate(N(b_i + 1), 1);
-			MatrixXd Ub = U.block(nb, 0, N(b_i + 1), dim);
-		    cU.block(nb, 0, N(b_i + 1), dim) = cUb;
+			MatrixXd Ub = U.block(acum_N(b_i), 0, N(b_i + 1), dim);
+		    cU.block(acum_N(b_i), 0, N(b_i + 1), dim) = cUb;
 			dist += (cUb - Ub).squaredNorm();
-			nb += N(b_i + 1);
 		}
 		//std::cout << "dist = " << dist << std::endl;
 

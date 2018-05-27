@@ -8,6 +8,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #include "ImGuiMenu.h"
 #include <igl/readMESH.h>
+#include <igl/writeMESH.h>
 #include <igl/readJOINT.h>
 #include <igl/project.h>
 #include <imgui/imgui.h>
@@ -17,9 +18,9 @@
 #include <iostream>
 ////////////////////////////////////////////////////////////////////////////////
 
-extern Eigen::MatrixXd V, C, P;
+extern Eigen::MatrixXd V, U, C, P;
 extern Eigen::MatrixXi T, F;
-extern Eigen::VectorXi N;
+extern Eigen::VectorXi N, A;
 extern std::vector<std::vector<int>> I;
 
 namespace igl
@@ -74,8 +75,19 @@ IGL_INLINE bool ImGuiMenu::load(std::string filename)
 	const size_t pos = filename.find_last_of('.');
 	const std::string ext = filename.substr(pos + 1);
 	if (ext == "mesh") {
-		igl::readMESH(filename, V, T, F, C, N);
-		viewer->data().VV = V;
+		if (filename.find("restpose") != std::string::npos) {
+			igl::readMESH(filename, V, T, F, C, N, A);
+			viewer->data().VV = V;
+		}
+		else if (viewer->data().VV.rows() > 0) { // restpose loaded
+			igl::readMESH(filename, U, T, F, C, N, A);
+			assert(V.rows() == U.rows());
+		}
+		else {
+			igl::readMESH(filename, V, T, F, C, N, A);
+			viewer->data().VV = V;
+		}
+		
 		return true;
 	}
 	else if (ext == "joint") {
@@ -89,12 +101,19 @@ IGL_INLINE bool ImGuiMenu::load(std::string filename)
 			std::cout << std::endl;
 		}
 		std::cout << P << std::endl;
+		return true;
 	}
-
+	return false;
 }
 
 IGL_INLINE bool ImGuiMenu::save(std::string filename)
 {
+	const size_t pos = filename.find_last_of('.');
+	const std::string ext = filename.substr(pos + 1);
+	if (ext == "mesh") {
+		igl::writeMESH(filename, U, T, F, A);
+		return true;
+	}
 	return false;
 }
 

@@ -51,7 +51,7 @@ Eigen::MatrixXi F;
 Eigen::MatrixXd C;
 Eigen::Matrix<double, Eigen::Dynamic, 3> bc;
 Eigen::VectorXi b;
-Eigen::VectorXi N;
+Eigen::VectorXi N, A;
 std::vector<std::vector<int>> I;
 
 int pressed_b;
@@ -698,7 +698,7 @@ bool key_down(igl::opengl::glfw::Viewer &viewer, unsigned char key, int mods)
 int main(int argc, char *argv[])
 {
   // Load a mesh in MESH format
-  igl::readMESH(TUTORIAL_SHARED_PATH "/cube.mesh", V, T, F, C, N);
+  igl::readMESH(TUTORIAL_SHARED_PATH "/cube.mesh", V, T, F, C, N, A);
   U = V;
 
   // Init the viewer
@@ -807,7 +807,7 @@ int main(int argc, char *argv[])
 		  }
 		  
 
-		  if (ImGui::SliderFloat("trans", &dist, -2.0f, 2.0f)) {
+		  if (ImGui::SliderFloat("trans", &dist, -15.0f, 15.0f)) {
 			  slice_plane.center = slice_plane.normal * (double)dist;
 			  slice_plane.vertices = slice_plane.stored_vertices + (slice_plane.normal.transpose() * (double)dist).replicate(4, 1);
 			  viewer.slice_plane.set_vertices(slice_plane.vertices);

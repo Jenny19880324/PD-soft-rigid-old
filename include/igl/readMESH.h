@@ -92,7 +92,8 @@ namespace igl
 		Eigen::PlainObjectBase<DerivedT>& T,
 		Eigen::PlainObjectBase<DerivedF>& F,
 		Eigen::PlainObjectBase<DerivedC>& C,
-		Eigen::PlainObjectBase<DerivedN>& N);
+		Eigen::PlainObjectBase<DerivedN>& N,
+		Eigen::VectorXi & A);
 	// Inputs:
 	// mesh_file pointer to already opened .mesh file
 	// Outputs:
@@ -109,7 +110,8 @@ namespace igl
 		Eigen::PlainObjectBase<DerivedT>& T,
 		Eigen::PlainObjectBase<DerivedF>& F,
 		Eigen::PlainObjectBase<DerivedC>& C,
-		Eigen::PlainObjectBase<DerivedN>& N);
+		Eigen::PlainObjectBase<DerivedN>& N,
+		Eigen::VectorXi & A);
 }
 
 #ifndef IGL_STATIC_LIBRARY

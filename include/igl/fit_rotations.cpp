@@ -13,6 +13,7 @@
 #include "polar_svd.h"
 #include "C_STR.h"
 #include <iostream>
+#include <omp.h>
 
 template <typename DerivedS, typename DerivedD>
 IGL_INLINE void igl::fit_rotations(
@@ -74,8 +75,9 @@ IGL_INLINE void igl::fit_rotations(
 	// resize output
 	R.resize(dim * nr, dim);
 
-	Eigen::Matrix<typename DerivedS::Scalar, 3, 3> si;
+	#pragma omp parallel for num_threads(4)
 	for (int r = 0; r < nr; r++) {
+		Eigen::Matrix<typename DerivedS::Scalar, 3, 3> si;
 		for (int i = 0; i < dim; i++) {
 			for (int j = 0; j < dim; j++) {
 				si(i, j) = S(r * 3 + i, j);

@@ -503,7 +503,8 @@ IGL_INLINE bool igl::readMESH(
 	Eigen::PlainObjectBase<DerivedT>& T,
 	Eigen::PlainObjectBase<DerivedF>& F,
 	Eigen::PlainObjectBase<DerivedC>& C,
-	Eigen::PlainObjectBase<DerivedN>& N)
+	Eigen::PlainObjectBase<DerivedN>& N,
+	Eigen::VectorXi & A)
 {
 	using namespace std;
 	FILE * mesh_file = fopen(mesh_file_name.c_str(), "r");
@@ -512,7 +513,7 @@ IGL_INLINE bool igl::readMESH(
 		fprintf(stderr, "IOError: %s could not be opened...", mesh_file_name.c_str());
 		return false;
 	}
-	return readMESH(mesh_file, V, T, F, C, N);
+	return readMESH(mesh_file, V, T, F, C, N, A);
 }
 
 
@@ -528,13 +529,16 @@ IGL_INLINE bool igl::readMESH(
 	Eigen::PlainObjectBase<DerivedT>& T,
 	Eigen::PlainObjectBase<DerivedF>& F,
 	Eigen::PlainObjectBase<DerivedC>& C,
-	Eigen::PlainObjectBase<DerivedN>& N)
+	Eigen::PlainObjectBase<DerivedN>& N,
+	Eigen::VectorXi & A)
 {
 	V.resize(0, Eigen::NoChange);
 	T.resize(0, Eigen::NoChange);
 	F.resize(0, Eigen::NoChange);
 	C.resize(0, Eigen::NoChange);
 	N.resize(0, Eigen::NoChange);
+	A.resize(0, Eigen::NoChange);
+
 	using namespace std;
 #ifndef LINE_MAX
 #  define LINE_MAX 2048
@@ -704,7 +708,7 @@ IGL_INLINE bool igl::readMESH(
 		return false;
 	}
 	// allocate space for tetrahedra
-	Eigen::VectorXi A(number_of_tetrahedra); // region attribute
+	A.resize(number_of_tetrahedra); // region attribute
 	T.resize(number_of_tetrahedra, 4);
 	// tet indices
 	int a, b, c, d;
@@ -849,5 +853,10 @@ template bool igl::readMESH<Eigen::Matrix<double, -1, 3, 0, -1, 3>, Eigen::Matri
 template bool igl::readMESH<Eigen::Matrix<double, -1, -1, 0, -1, -1>, Eigen::Matrix<int, -1, -1, 0, -1, -1>, Eigen::Matrix<int, -1, -1, 0, -1, -1> >(std::basic_string<char, std::char_traits<char>, std::allocator<char> >, Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> >&, Eigen::PlainObjectBase<Eigen::Matrix<int, -1, -1, 0, -1, -1> >&, Eigen::PlainObjectBase<Eigen::Matrix<int, -1, -1, 0, -1, -1> >&);
 template bool igl::readMESH<Eigen::Matrix<double, -1, -1, 0, -1, -1>, Eigen::Matrix<int, -1, -1, 0, -1, -1>, Eigen::Matrix<double, -1, -1, 0, -1, -1> >(std::basic_string<char, std::char_traits<char>, std::allocator<char> >, Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> >&, Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> >&, Eigen::PlainObjectBase<Eigen::Matrix<int, -1, -1, 0, -1, -1> >&);
 template bool igl::readMESH<double, int>(std::basic_string<char, std::char_traits<char>, std::allocator<char> >, std::vector<std::vector<double, std::allocator<double> >, std::allocator<std::vector<double, std::allocator<double> > > >&, std::vector<std::vector<int, std::allocator<int> >, std::allocator<std::vector<int, std::allocator<int> > > >&, std::vector<std::vector<int, std::allocator<int> >, std::allocator<std::vector<int, std::allocator<int> > > >&);
-template bool igl::readMESH<Eigen::Matrix<double, -1, -1, 0, -1, -1>, Eigen::Matrix<int, -1, -1, 0, -1, -1>, Eigen::Matrix<int, -1, -1, 0, -1, -1>, Eigen::Matrix<double, -1, -1, 0, -1, -1>, Eigen::Matrix<int, -1, 1, 0, -1, 1> >(std::basic_string<char, struct std::char_traits<char>, std::allocator<char> >, Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> > &, Eigen::PlainObjectBase<Eigen::Matrix<int, -1, -1, 0, -1, -1> > &, Eigen::PlainObjectBase<Eigen::Matrix<int, -1, -1, 0, -1, -1> > &, Eigen::PlainObjectBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> > &, Eigen::PlainObjectBase<Eigen::Matrix<int, -1, 1, 0, -1, 1> > &);
+template bool igl::readMESH< Eigen::Matrix<double, -1, -1, 0, -1, -1>,  Eigen::Matrix<int, -1, -1, 0, -1, -1>,  Eigen::Matrix<int, -1, -1, 0, -1, -1>,  Eigen::Matrix<double, -1, -1, 0, -1, -1>,  Eigen::Matrix<int, -1, 1, 0, -1, 1> >( std::basic_string<char, struct std::char_traits<char>,  std::allocator<char> >,  Eigen::PlainObjectBase< Eigen::Matrix<double, -1, -1, 0, -1, -1> > &,  Eigen::PlainObjectBase< Eigen::Matrix<int, -1, -1, 0, -1, -1> > &,  Eigen::PlainObjectBase< Eigen::Matrix<int, -1, -1, 0, -1, -1> > &,  Eigen::PlainObjectBase< Eigen::Matrix<double, -1, -1, 0, -1, -1> > &,  Eigen::PlainObjectBase< Eigen::Matrix<int, -1, 1, 0, -1, 1> > &,  Eigen::Matrix<int, -1, 1, 0, -1, 1> &);
+//template bool igl::readMESH< Eigen::Matrix<double, -1, -1, 0, -1, -1>,  Eigen::Matrix<int, -1, -1, 0, -1, -1>,  Eigen::Matrix<int, -1, -1, 0, -1, -1>,  Eigen::Matrix<double, -1, -1, 0, -1, -1>,  Eigen::Matrix<int, -1, 1, 0, -1, 1> >( std::basic_string<char, struct std::char_traits<char>,  std::allocator<char> >,  Eigen::PlainObjectBase< Eigen::Matrix<double, -1, -1, 0, -1, -1> > &,  Eigen::PlainObjectBase< Eigen::Matrix<int, -1, -1, 0, -1, -1> > &,  Eigen::PlainObjectBase< Eigen::Matrix<int, -1, -1, 0, -1, -1> > &,  Eigen::PlainObjectBase< Eigen::Matrix<double, -1, -1, 0, -1, -1> > &,  Eigen::PlainObjectBase< Eigen::Matrix<int, -1, 1, 0, -1, 1> > &,  Eigen::Matrix<int, -1, 1, 0, -1, 1> &);
+
+
+
+
 #endif
