@@ -227,17 +227,17 @@ IGL_INLINE bool igl::rbc_solve(
 				B += Dl;
 			}
 
-			if (data.collision_enabled) {
-				double floor_y = data.floor_y;
-				for (int i = 0; i < U.rows(); i++) {
-					if (U.row(i).y() < floor_y) {
-						double x = U.row(i).x();
-						double y = floor_y;
-						double z = U.row(i).z();
-						B.row(i) -= data.collision_weight * Eigen::RowVector3d(0, y - U.row(i).y(), 0);
-					}
-				}
-			}
+			//if (data.collision_enabled) {
+			//	double floor_y = data.floor_y;
+			//	for (int i = 0; i < U.rows(); i++) {
+			//		if (U.row(i).y() < floor_y) {
+			//			double x = U.row(i).x();
+			//			double y = floor_y;
+			//			double z = U.row(i).z();
+			//			B.row(i) -= data.collision_weight * Eigen::RowVector3d(0, y - U.row(i).y(), 0);
+			//		}
+			//	}
+			//}
 
 			if (data.constraint == SOFT_CONSTRAINT) {
 				for (int i = 0; i < data.b.rows(); i++) {
@@ -297,6 +297,14 @@ IGL_INLINE bool igl::rbc_solve(
 			}
 
 
+			if (data.collision_enabled) {
+				double floor_y = data.floor_y;
+				for (int i = 0; i < U.rows(); i++) {
+					if (U.row(i).y() < floor_y) {
+						U.row(i).y() = floor_y;
+					}
+				}
+			}
 
 			iter++;
 		}

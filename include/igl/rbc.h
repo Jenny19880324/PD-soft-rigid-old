@@ -79,7 +79,7 @@ namespace igl
 		mu(1.0),
 		g(-0.0098),
 		constraint_weight(50.0),
-		collision_weight(50.0),
+		collision_weight(1.0),
 		max_iter(10),
 		J(),
 		L(),
