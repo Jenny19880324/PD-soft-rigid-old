@@ -53,6 +53,7 @@ extern Eigen::VectorXi N;
 extern std::vector<std::vector<int>> I;
 extern igl::RBCData rbc_data;
 extern bool gravity_enabled;
+extern bool floor_enabled;
 extern bool external_force_enabled;
 extern bool output_moving_constraints;
 extern int anim_f;
@@ -829,6 +830,7 @@ namespace glfw
 	P = data().P;
 	I = data().I;
 	gravity_enabled = data().gravity_enabled;
+	floor_enabled = data().floor_enabled;
 	external_force_enabled = data().external_force_enabled;
 	anim_t = 0.0;
 	anim_f = 0;
@@ -840,7 +842,9 @@ namespace glfw
 	rbc_data.h = data().h;
 	rbc_data.mu = data().mu;
 	rbc_data.g = data().g;
+	rbc_data.floor_y = data().floor_y;
 	rbc_data.constraint_weight = data().constraint_weight;
+	rbc_data.collision_enabled = data().collision_enabled;
 
 	if (data().b.size() > 0) {
 		b = data().b[0];
@@ -854,6 +858,31 @@ namespace glfw
 		//bc.conservativeResize(bc.rows() + bc_first_frame.rows(), Eigen::NoChange);
 		//bc.block(bc.rows() - bc_first_frame.rows(), 0, bc_first_frame.rows(), 3) << bc_first_frame;
 		igl::rbc_precomputation(V, T, N, V.cols(), b, rbc_data);
+	}
+
+	if (floor_enabled) {
+		// Find the bounding box
+		Eigen::Vector3d m = V.colwise().minCoeff();
+		Eigen::Vector3d M = V.colwise().maxCoeff();
+
+		double x_scale = (M - m).x();
+		double y_scale = (M - m).y();
+		double z_scale = (M - m).z();
+
+		Eigen::MatrixXd floor_plane_V(4, 3);
+		Eigen::MatrixXi floor_plane_F(2, 3);
+
+		floor_plane_V << -x_scale, rbc_data.floor_y, z_scale,
+			x_scale, rbc_data.floor_y, z_scale,
+			x_scale, rbc_data.floor_y, -z_scale,
+			-x_scale, rbc_data.floor_y, -z_scale;
+
+		floor_plane_F << 0, 1, 3,
+						1, 2, 3;
+
+		append_mesh();
+		data().set_mesh(floor_plane_V, floor_plane_F);
+		selected_data_index--;
 	}
 
 
@@ -877,6 +906,8 @@ namespace glfw
 	  data().P = P;
 	  data().I = I;
 	  data().gravity_enabled = gravity_enabled;
+	  data().collision_enabled = rbc_data.collision_enabled;
+	  data().floor_enabled = floor_enabled;
 	  data().external_force_enabled = external_force_enabled;
 	  data().with_dynamics = rbc_data.with_dynamics;
 	  data().max_iter = rbc_data.max_iter;
@@ -886,6 +917,7 @@ namespace glfw
 	  data().h = rbc_data.h;
 	  data().mu = rbc_data.mu;
 	  data().g = rbc_data.g;
+	  data().floor_y = rbc_data.floor_y;
 	  data().constraint_weight = rbc_data.constraint_weight;
 
 	  if (!output_moving_constraints) {

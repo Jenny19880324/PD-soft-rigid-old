@@ -92,7 +92,7 @@ IGL_INLINE bool igl::rbc_precomputation(
 		Q += DQ;
 		// Dummy external forces
 		//data.f_ext = MatrixXd::Zero(n, data.dim);
-		data.f_ext = Eigen::RowVector3d(0., 0.001, 0.).replicate(V.rows(), 1);
+		//data.f_ext = Eigen::RowVector3d(0., 0.001, 0.).replicate(V.rows(), 1);
 		data.vel = MatrixXd::Zero(n, data.dim);
 	}
 
@@ -228,7 +228,7 @@ IGL_INLINE bool igl::rbc_solve(
 			}
 
 			if (data.collision_enabled) {
-				double floor_y = -2.;
+				double floor_y = data.floor_y;
 				for (int i = 0; i < U.rows(); i++) {
 					if (U.row(i).y() < floor_y) {
 						double x = U.row(i).x();

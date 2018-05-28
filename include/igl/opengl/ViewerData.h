@@ -145,6 +145,8 @@ public:
   std::vector<Eigen::VectorXi> b;                           // constrained vertices index
   std::vector<std::vector<int>> I;                          // Vertex indices involved int joints
   bool gravity_enabled;
+  bool collision_enabled;
+  bool floor_enabled;
   bool external_force_enabled;
   bool hinge_enabled;
   bool with_dynamics;
@@ -155,6 +157,7 @@ public:
   double h;
   float mu;
   float g;
+  float floor_y;
   float constraint_weight;
 
   // Per face attributes
@@ -259,6 +262,8 @@ namespace igl
 	  SERIALIZE_MEMBER(b);
 	  SERIALIZE_MEMBER(bc);
 	  SERIALIZE_MEMBER(gravity_enabled);
+	  SERIALIZE_MEMBER(collision_enabled);
+	  SERIALIZE_MEMBER(floor_enabled);
 	  SERIALIZE_MEMBER(external_force_enabled);
 	  SERIALIZE_MEMBER(hinge_enabled);
 	  SERIALIZE_MEMBER(with_dynamics);
@@ -269,6 +274,7 @@ namespace igl
 	  SERIALIZE_MEMBER(h);
 	  SERIALIZE_MEMBER(mu);
 	  SERIALIZE_MEMBER(g);
+	  SERIALIZE_MEMBER(floor_y);
 	  SERIALIZE_MEMBER(constraint_weight);
       SERIALIZE_MEMBER(F_normals);
       SERIALIZE_MEMBER(F_material_ambient);

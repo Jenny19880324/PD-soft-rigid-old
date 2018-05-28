@@ -967,21 +967,43 @@ if (ImGui::Button("clear")) {
 	  }
 
 	  if (ImGui::Checkbox("floor", &floor_enabled)) {
+		  static int floor_idx = 0;
 		  if (floor_enabled) {
+
+			  // Find the bounding box
+			  Eigen::Vector3d m = V.colwise().minCoeff();
+			  Eigen::Vector3d M = V.colwise().maxCoeff();
+
+			  double x_scale = (M - m).x();
+			  double y_scale = (M - m).y();
+			  double z_scale = (M - m).z();
+
+
+			  floor_plane.V << -x_scale, 0., z_scale,
+				  x_scale, 0., z_scale,
+				  x_scale, 0., -z_scale,
+				  -x_scale, 0., -z_scale;
+
 			  viewer.append_mesh();
+			  floor_idx = viewer.data_list.size() - 1;
 			  viewer.data().set_mesh(floor_plane.V, floor_plane.F);
 			  viewer.selected_data_index--;
+		  }
+		  else {
+			  viewer.erase_mesh(floor_idx);
 		  }
 	  }
 	  ImGui::SameLine();
 	  if (ImGui::DragFloat("floor y", &rbc_data.floor_y, 0.1, -10.0, 10.0)) {
 		  double floor_y = rbc_data.floor_y;
 		  viewer.selected_data_index++;
+
+		  floor_plane.V(0, 1) = floor_y;
+		  floor_plane.V(1, 1) = floor_y;
+		  floor_plane.V(2, 1) = floor_y;
+		  floor_plane.V(3, 1) = floor_y;
 		  viewer.data().set_vertices(floor_plane.V);
-		  floor_plane.V << -10., floor_y, 10.,
-			  10., floor_y, 10.,
-			  10., floor_y, -10.,
-			  -10., floor_y, -10.;
+
 		  viewer.selected_data_index--;
 	  }
 
