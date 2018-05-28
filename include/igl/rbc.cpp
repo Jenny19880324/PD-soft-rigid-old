@@ -92,7 +92,7 @@ IGL_INLINE bool igl::rbc_precomputation(
 		Q += DQ;
 		// Dummy external forces
 		//data.f_ext = MatrixXd::Zero(n, data.dim);
-		data.f_ext = Eigen::RowVector3d(0., (double)data.g, 0.).replicate(V.rows(), 1);
+		data.f_ext = Eigen::RowVector3d(0., 0.001, 0.).replicate(V.rows(), 1);
 		data.vel = MatrixXd::Zero(n, data.dim);
 	}
 

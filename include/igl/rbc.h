@@ -51,6 +51,7 @@ namespace igl
 		double h;
 		float mu;
 		float g;
+		float floor_y;
 		float constraint_weight;
 		float collision_weight;
 		int max_iter;

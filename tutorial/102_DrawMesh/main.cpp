@@ -26,6 +26,7 @@
 #include <unordered_set>
 #include <unordered_map>
 #include <igl/fit_hinged_rigid_motion.h>
+#include <igl/png/writePNG.h>
 
 
 bool vertex_pick_enabled = false;
@@ -34,8 +35,10 @@ bool vertices_marquee_deselect_enabled = false;
 bool vertices_move_enabled = false;
 bool vertices_rotate_enabled = false;
 bool external_force_enabled = false;
+bool floor_enabled = false;
 bool gravity_enabled = false;
 bool output_moving_constraints = false;
+bool output_screenshot = false;
 
 Eigen::VectorXi temp_b;
 Eigen::MatrixXd temp_U;
@@ -116,6 +119,24 @@ struct SlicePlane {
 };
 
 SlicePlane slice_plane;
+
+struct FloorPlane {
+	bool enabled = false;
+	Eigen::MatrixXd V;
+	Eigen::MatrixXi F;
+
+	FloorPlane() {
+		V.resize(4, 3);
+		V << -10., 0., 10.,
+			10., 0., 10.,
+			10., 0., -10.,
+			-10., 0., -10.;
+
+		F.resize(2, 3);
+		F << 0, 1, 3,
+			1, 2, 3;
+	}
+} floor_plane;
 
 Eigen::Quaternionf trackball_angle = Eigen::Quaternionf::Identity();
 Eigen::Quaternionf down_rotation = Eigen::Quaternionf::Identity();
@@ -362,10 +383,6 @@ void selection_difference(
 
 	it = std::set_difference(m, m + minuend.rows(), s, s + subtrahend.rows(), v.begin());
 	v.resize(it - v.begin());
-	//std::cout << "The difference has " << v.size() << " elements:\n";
-	//for (it = v.begin(); it != v.end(); ++it)
-	//	std::cout << ' ' << *it;
-	//std::cout << '\n';
 
 	difference_b.resize(v.size());
 	difference_bc.resize(difference_b.rows(), Eigen::NoChange);
@@ -643,6 +660,24 @@ bool pre_draw(igl::opengl::glfw::Viewer &viewer)
 		viewer.data().set_vertices(U);
 		viewer.data().compute_normals();
 
+		//screen shot
+		if (output_screenshot) {
+			// Allocate temporary buffers
+			Eigen::Matrix<unsigned char, Eigen::Dynamic, Eigen::Dynamic> pngR(1280, 800);
+			Eigen::Matrix<unsigned char, Eigen::Dynamic, Eigen::Dynamic> pngG(1280, 800);
+			Eigen::Matrix<unsigned char, Eigen::Dynamic, Eigen::Dynamic> pngB(1280, 800);
+			Eigen::Matrix<unsigned char, Eigen::Dynamic, Eigen::Dynamic> pngA(1280, 800);
+
+			// Draw the scene in the buffers
+			viewer.core.draw_buffer(
+				viewer.data(), false, pngR, pngG, pngB, pngA);
+
+			// Save it to a PNG
+			std::string filename = TUTORIAL_SHARED_PATH + std::string("/../screenshot/") + std::to_string(anim_f) + ".png";
+			std::cout << "filename = " << filename << std::endl;
+			const char *fname = filename.c_str();
+			igl::png::writePNG(pngR, pngG, pngB, pngA, filename);
+		}
 		anim_t += anim_t_dir;
 		anim_f++;
 	}
@@ -910,42 +945,6 @@ if (ImGui::Button("clear")) {
 		  viewer.data().compute_normals();
 		  new_target = true;
 	  }
-
-
-
-	  if (ImGui::Button("Constrained Procrustes")) {
-		  //Eigen::Vector3d p = Eigen::Vector3d::Zero();
-		  //int nb1 = rbc_data.N(1);
-		  //Eigen::MatrixXd Ub1 = U.block(rbc_data.nf, 0, nb1, rbc_data.dim);
-		  //Eigen::MatrixXd Vb1 = rbc_data.V.block(rbc_data.nf, 0, nb1, rbc_data.dim);
-		  //int nb2 = rbc_data.N(2);
-		  //Eigen::MatrixXd Ub2 = U.block(rbc_data.nf + nb1, 0, nb2, rbc_data.dim);
-		  //Eigen::MatrixXd Vb2 = rbc_data.V.block(rbc_data.nf + nb1, 0, nb2, rbc_data.dim);
-		  //Eigen::Matrix3d R1, R2;
-		  //Eigen::RowVector3d t1, t2;
-		  //if (new_target) {
-			 // std::cout << "new target" << std::endl;
-			 // cUb1 = Ub1;
-			 // cUb2 = Ub2;
-		  //}
-		  //igl::fit_hinged_rigid_motion(
-			 // Vb1, Ub1, cUb1,
-			 // Vb2, Ub2, cUb2,
-			 // p,
-			 // R1, t1,
-			 // R2, t2
-		  //);
-
-		  //cUb1 = Vb1 * R1 + t1.replicate(nb1, 1);
-		  //cUb2 = Vb2 * R2 + t2.replicate(nb2, 1);
-		  //new_target = false;
-		  //temp_U = U;
-		  //temp_U.block(rbc_data.nf, 0, nb1, rbc_data.dim) = cUb1;
-		  //temp_U.block(rbc_data.nf + nb1, 0, nb2, rbc_data.dim) = cUb2;
-		  //igl::rbc_solve(bc, rbc_data, temp_U);
-		  //viewer.data().set_vertices(temp_U);
-		  //viewer.data().compute_normals();
-	  }
 	  
 	  
 	  // material panel
@@ -963,8 +962,27 @@ if (ImGui::Button("clear")) {
 		  igl::rbc_precomputation(V, T, N, V.cols(), b, rbc_data);
 	  }
 
-	  if (ImGui::Checkbox("enable collision", &rbc_data.collision_enabled)) {
+	  if (ImGui::Checkbox("collision", &rbc_data.collision_enabled)) {
 
+	  }
+
+	  if (ImGui::Checkbox("floor", &floor_enabled)) {
+		  if (floor_enabled) {
+			  viewer.append_mesh();
+			  viewer.data().set_mesh(floor_plane.V, floor_plane.F);
+			  viewer.selected_data_index--;
+		  }
+	  }
+	  ImGui::SameLine();
+	  if (ImGui::DragFloat("floor y", &rbc_data.floor_y, 0.1, -10.0, 10.0)) {
+		  double floor_y = rbc_data.floor_y;
+		  viewer.selected_data_index++;
+		  viewer.data().set_vertices(floor_plane.V);
+		  floor_plane.V << -10., floor_y, 10.,
+			  10., floor_y, 10.,
+			  10., floor_y, -10.,
+			  -10., floor_y, -10.;
+		  viewer.selected_data_index--;
 	  }
 
 	  // Expose the same variable directly
@@ -1082,6 +1100,18 @@ if (ImGui::Button("clear")) {
 
 	  ImGui::Text("#V %d\n", V.rows());
 	  ImGui::Text("#T %d\n", T.rows());
+	  ImGui::End();
+
+	  // Output panel
+	  ImGui::SetNextWindowPos(ImVec2(180.f * menu.menu_scaling(), 480), ImGuiSetCond_FirstUseEver);
+	  ImGui::SetNextWindowSize(ImVec2(200, 80), ImGuiSetCond_FirstUseEver);
+	  ImGui::Begin(
+		  "Output", nullptr
+	  );
+
+	  if (ImGui::Checkbox("screenshot", &output_screenshot)) {
+
+	  }
 	  ImGui::End();
 
   };

@@ -386,7 +386,6 @@ namespace glfw
     {
       if (plugins[i]->load(mesh_file_name_string))
       {
-		  U = V;
 		  data().clear();
 		  data().set_mesh(U, F);
 		  data().set_colors(C);

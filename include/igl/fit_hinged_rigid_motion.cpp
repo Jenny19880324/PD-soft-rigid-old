@@ -393,7 +393,7 @@ IGL_INLINE void igl::fit_hinged_rigid_motion(
 	using namespace std;
 	using namespace Eigen;
 
-	int max_iter = 10;
+	int max_iter = 1;
 	int iter = 0;
 	const int dim = 3;
 
@@ -572,7 +572,7 @@ IGL_INLINE void igl::fit_hinged_rigid_motion(
 		}
 		//std::cout << "obj = " << obj << std::endl;
 
-		if (obj < 1e-6) {
+		if (obj < 1e-2) {
 			break;
 		}
 		iter++;

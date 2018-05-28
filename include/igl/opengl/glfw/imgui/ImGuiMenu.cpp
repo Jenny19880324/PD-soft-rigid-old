@@ -78,6 +78,7 @@ IGL_INLINE bool ImGuiMenu::load(std::string filename)
 		if (filename.find("restpose") != std::string::npos) {
 			igl::readMESH(filename, V, T, F, C, N, A);
 			viewer->data().VV = V;
+			U = V;
 		}
 		else if (viewer->data().VV.rows() > 0) { // restpose loaded
 			igl::readMESH(filename, U, T, F, C, N, A);
@@ -86,6 +87,7 @@ IGL_INLINE bool ImGuiMenu::load(std::string filename)
 		else {
 			igl::readMESH(filename, V, T, F, C, N, A);
 			viewer->data().VV = V;
+			U = V;
 		}
 		
 		return true;
