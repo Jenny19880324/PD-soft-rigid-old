@@ -91,7 +91,7 @@ namespace igl
 		};	
 	};
 	
-	// Compute necessary information to start using an ARAP deformation
+	// Compute necessary information to start using an RBC deformation
 	//
 	// Inputs:
 	// V #V by dim list of mesh positions
@@ -113,6 +113,21 @@ namespace igl
 		const int dim,
 		const Eigen::PlainObjectBase<Derivedb> & b,
 		RBCData & data);
+
+	// when collision added, A is altered each step
+	template <
+		typename DerivedV,
+		typename DerivedF,
+		typename DerivedN,
+		typename Derivedb>
+		IGL_INLINE bool rbc_precomputation(
+			const Eigen::PlainObjectBase<DerivedV> & V,
+			const Eigen::PlainObjectBase<DerivedV> & U,
+			const Eigen::PlainObjectBase<DerivedF> & F,
+			const Eigen::PlainObjectBase<DerivedN> & N,
+			const int dim,
+			const Eigen::PlainObjectBase<Derivedb> & b,
+			RBCData & data);
 		
 	// Inputs:
 	// bc #b by dim list of boundary conditions

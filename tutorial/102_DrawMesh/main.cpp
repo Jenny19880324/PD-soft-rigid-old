@@ -656,6 +656,7 @@ bool pre_draw(igl::opengl::glfw::Viewer &viewer)
 			// green means b is precomputed, it's not temp_b anymore.
 			viewer.data().move_points(bc_ith_frame, Eigen::RowVector3d(0.0, 1.0, 0.0), 0);
 		}
+		igl::rbc_precomputation(V, U, T, N, V.cols(), b, rbc_data);
 		igl::rbc_solve(bc, rbc_data, U);
 		viewer.data().set_vertices(U);
 		viewer.data().compute_normals();
@@ -923,28 +924,9 @@ if (ImGui::Button("clear")) {
 
 		  igl::rbc_precomputation(V, T, N, V.cols(), b, rbc_data);
 	  }
-	  static bool new_target = false;
-	  if (ImGui::Button("Individual Procrustes")) {
-		  if (viewer.data().bc.size() > 1 &&
-			  anim_f < viewer.data().bc.size()) {
 
-			  Eigen::VectorXi b_ith_frame = viewer.data().b[anim_f];
-			  Eigen::MatrixX3d bc_ith_frame = viewer.data().bc[anim_f];
-
-			  bc.block(0, 0, bc_ith_frame.rows(), 3) << bc_ith_frame;
-			  // green means b is precomputed, it's not temp_b anymore.
-			  viewer.data().move_points(bc_ith_frame, Eigen::RowVector3d(0.0, 1.0, 0.0), 0);
-			  anim_f++;
-		  }
-		  if (temp_U.rows() > 0) {
-			  U = temp_U;
-			  std::cout << "U = temp_U" << std::endl;
-		  } 
-		  igl::rbc_solve(bc, rbc_data, U);
-		  viewer.data().set_vertices(U);
-		  viewer.data().compute_normals();
-		  new_target = true;
-	  }
+	  ImGui::SameLine();
+	  ImGui::Text("%d\n", anim_f);
 	  
 	  
 	  // material panel
@@ -1021,8 +1003,6 @@ if (ImGui::Button("clear")) {
 				  rbc_data.with_dynamics = true;
 				  igl::rbc_precomputation(V, T, N, V.cols(), b, rbc_data);
 			  }
-			  
-			  rbc_data.f_ext = Eigen::RowVector3d(0., (double)rbc_data.g, 0.).replicate(V.rows(), 1);
 		  }
 		  else {
 			  rbc_data.g = 0.;
@@ -1032,7 +1012,6 @@ if (ImGui::Button("clear")) {
 	  ImGui::PushItemWidth(-40);
 	  if (ImGui::DragFloat("g", &rbc_data.g, 1.0, -1.0, 0)) {
 		  if (gravity_enabled) {
-			  rbc_data.f_ext = Eigen::RowVector3d(0., (double)rbc_data.g, 0.).replicate(V.rows(), 1);
 		  }
 		  else {
 			  rbc_data.g = 0.;
@@ -1333,7 +1312,7 @@ if (ImGui::Button("clear")) {
   // Precomputation
   //rbc_data.max_iter = 100;
   //rbc_data.with_dynamics = true;
-  rbc_data.h = 0.5;
+  //rbc_data.h = 0.5;
   igl::rbc_precomputation(V, T, N, V.cols(), b, rbc_data);
 
   // Plot the mesh
