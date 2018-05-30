@@ -993,6 +993,7 @@ if (ImGui::Button("clear")) {
 	  if (ImGui::DragFloat("mu", &rbc_data.mu, 0.0, 0.0, 10.0)) {
 		  igl::rbc_precomputation(V, T, N, V.cols(), b, rbc_data);
 	  }
+	  if (ImGui::DragFloat("mass scaling", &rbc_data.mass_scaling, 1e-3, 0.0, 1.0)) {}
 	  ImGui::PopItemWidth();
 
 	  if (ImGui::Checkbox("external force", &external_force_enabled)) {

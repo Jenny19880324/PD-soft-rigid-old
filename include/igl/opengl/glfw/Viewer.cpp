@@ -56,6 +56,7 @@ extern bool gravity_enabled;
 extern bool floor_enabled;
 extern bool external_force_enabled;
 extern bool output_moving_constraints;
+extern bool output_screenshot;
 extern int anim_f;
 extern double anim_t;
 
@@ -832,6 +833,7 @@ namespace glfw
 	gravity_enabled = data().gravity_enabled;
 	floor_enabled = data().floor_enabled;
 	external_force_enabled = data().external_force_enabled;
+	output_screenshot = data().output_screenshot;
 	anim_t = 0.0;
 	anim_f = 0;
 	rbc_data.with_dynamics = data().with_dynamics;
@@ -841,6 +843,7 @@ namespace glfw
 	rbc_data.bone_constraint = data().bone_constraint;
 	rbc_data.h = data().h;
 	rbc_data.mu = data().mu;
+	rbc_data.mass_scaling = data().mass_scaling;
 	rbc_data.g = data().g;
 	rbc_data.floor_y = data().floor_y;
 	rbc_data.constraint_weight = data().constraint_weight;
@@ -916,9 +919,11 @@ namespace glfw
 	  data().bone_constraint = rbc_data.bone_constraint;
 	  data().h = rbc_data.h;
 	  data().mu = rbc_data.mu;
+	  data().mass_scaling = rbc_data.mass_scaling;
 	  data().g = rbc_data.g;
 	  data().floor_y = rbc_data.floor_y;
 	  data().constraint_weight = rbc_data.constraint_weight;
+	  data().output_screenshot = output_screenshot;
 
 	  if (!output_moving_constraints) {
 		  data().b.clear();

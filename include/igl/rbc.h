@@ -50,6 +50,7 @@ namespace igl
 		Eigen::MatrixXd f_ext, vel, Ab, V, T;
 		double h;
 		float mu;
+		float mass_scaling;
 		float g;
 		float floor_y;
 		float constraint_weight;
@@ -77,6 +78,7 @@ namespace igl
 		f_ext(),
 		h(1),
 		mu(1.0),
+		mass_scaling(1.0),
 		g(-0.0098),
 		constraint_weight(50.0),
 		collision_weight(1.0),

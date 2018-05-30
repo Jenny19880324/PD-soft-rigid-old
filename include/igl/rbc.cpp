@@ -87,6 +87,7 @@ IGL_INLINE bool igl::rbc_precomputation(
 		assert(h != 0);
 		SparseMatrix<double> M;
 		massmatrix(V, F, MASSMATRIX_TYPE_DEFAULT, data.M);
+		data.M *= data.mass_scaling;
 		const double dw = 1. / data.mu;
 		SparseMatrix<double> DQ = dw * 1./(h * h) * data.M;
 		Q += DQ;
@@ -237,7 +238,7 @@ template <
 		assert(h != 0);
 		SparseMatrix<double> M;
 		massmatrix(V, F, MASSMATRIX_TYPE_DEFAULT, data.M);
-		data.M *= 0.001;
+		data.M *= data.mass_scaling;
 		const double dw = 1. / data.mu;
 		SparseMatrix<double> DQ = dw * 1. / (h * h) * data.M;
 		Q += DQ;
@@ -448,6 +449,14 @@ IGL_INLINE bool igl::rbc_solve(
 					row += nb;
 				}
 			}
+			//if (data.collision_enabled) {
+			//	double floor_y = data.floor_y;
+			//	for (int i = 0; i < U0.rows(); i++) {
+			//		if (U0.row(i).y() < floor_y) {
+			//			U(i, 1) = floor_y;
+			//		}
+			//	}
+			//}
 
 			iter++;
 		}
