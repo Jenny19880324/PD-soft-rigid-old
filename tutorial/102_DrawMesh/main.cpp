@@ -1313,7 +1313,7 @@ if (ImGui::Button("clear")) {
   // Precomputation
   //rbc_data.max_iter = 100;
   //rbc_data.with_dynamics = true;
-  //rbc_data.h = 0.5;
+  rbc_data.h = 0.5;
   igl::rbc_precomputation(V, T, N, V.cols(), b, rbc_data);
 
   // Plot the mesh

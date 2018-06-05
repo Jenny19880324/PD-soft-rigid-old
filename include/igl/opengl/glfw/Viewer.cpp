@@ -847,6 +847,7 @@ namespace glfw
 	rbc_data.g = data().g;
 	rbc_data.floor_y = data().floor_y;
 	rbc_data.constraint_weight = data().constraint_weight;
+	rbc_data.collision_weight = data().collision_weight;
 	rbc_data.collision_enabled = data().collision_enabled;
 
 	if (data().b.size() > 0) {
@@ -923,6 +924,7 @@ namespace glfw
 	  data().g = rbc_data.g;
 	  data().floor_y = rbc_data.floor_y;
 	  data().constraint_weight = rbc_data.constraint_weight;
+	  data().collision_weight = rbc_data.collision_weight;
 	  data().output_screenshot = output_screenshot;
 
 	  if (!output_moving_constraints) {
