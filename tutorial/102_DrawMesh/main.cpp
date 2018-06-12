@@ -51,10 +51,11 @@ Eigen::MatrixXd visible_C;
 Eigen::MatrixXd V, U, P;
 Eigen::MatrixXi T;
 Eigen::MatrixXi F;
+Eigen::MatrixXi SF;
 Eigen::MatrixXd C;
 Eigen::Matrix<double, Eigen::Dynamic, 3> bc;
 Eigen::VectorXi b;
-Eigen::VectorXi N, A;
+Eigen::VectorXi N, A, SV;
 std::vector<std::vector<int>> I;
 
 int pressed_b;

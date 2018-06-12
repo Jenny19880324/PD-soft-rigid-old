@@ -19,8 +19,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 extern Eigen::MatrixXd V, U, C, P;
-extern Eigen::MatrixXi T, F;
-extern Eigen::VectorXi N, A;
+extern Eigen::MatrixXi T, F, SF;
+extern Eigen::VectorXi N, A, SV;
 extern std::vector<std::vector<int>> I;
 
 namespace igl
@@ -85,7 +85,10 @@ IGL_INLINE bool ImGuiMenu::load(std::string filename)
 			assert(V.rows() == U.rows());
 		}
 		else {
-			igl::readMESH(filename, V, T, F, C, N, A);
+			//igl::readMESH(filename, V, T, F, C, N, A);
+			//viewer->data().VV = V;
+			//U = V;
+			igl::readMESH(filename, V, T, F, SF, C, N, A, SV);
 			viewer->data().VV = V;
 			U = V;
 		}

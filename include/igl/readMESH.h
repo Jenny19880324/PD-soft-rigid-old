@@ -106,12 +106,51 @@ namespace igl
 		typename DerivedN>
 	IGL_INLINE bool readMESH(
 		FILE * mesh_file,
-		Eigen::PlainObjectBase<DerivedV>& V,
-		Eigen::PlainObjectBase<DerivedT>& T,
-		Eigen::PlainObjectBase<DerivedF>& F,
-		Eigen::PlainObjectBase<DerivedC>& C,
-		Eigen::PlainObjectBase<DerivedN>& N,
+		Eigen::PlainObjectBase<DerivedV> & V,
+		Eigen::PlainObjectBase<DerivedT> & T,
+		Eigen::PlainObjectBase<DerivedF> & F,
+		Eigen::PlainObjectBase<DerivedC> & C,
+		Eigen::PlainObjectBase<DerivedN> & N,
 		Eigen::VectorXi & A);
+
+
+	// readMESH for self collision
+	// Outputs:
+	// SF surface facets 
+	// SV surface vertices
+	template <
+		typename DerivedV,
+		typename DerivedT,
+		typename DerivedF,
+		typename DerivedC,
+		typename DerivedN>
+		IGL_INLINE bool readMESH(
+			const std::string mesh_file_name,
+			Eigen::PlainObjectBase<DerivedV> & V,
+			Eigen::PlainObjectBase<DerivedT> & T,
+			Eigen::PlainObjectBase<DerivedF> & F,
+			Eigen::PlainObjectBase<DerivedF> & SF,
+			Eigen::PlainObjectBase<DerivedC> & C,
+			Eigen::PlainObjectBase<DerivedN> & N,
+			Eigen::VectorXi & A,
+			Eigen::VectorXi & SV);
+
+	template <
+		typename DerivedV,
+		typename DerivedT,
+		typename DerivedF,
+		typename DerivedC,
+		typename DerivedN>
+		IGL_INLINE bool readMESH(
+			FILE * mesh_file,
+			Eigen::PlainObjectBase<DerivedV> & V,
+			Eigen::PlainObjectBase<DerivedT> & T,
+			Eigen::PlainObjectBase<DerivedF> & F,
+			Eigen::PlainObjectBase<DerivedF> & SF,
+			Eigen::PlainObjectBase<DerivedC> & C,
+			Eigen::PlainObjectBase<DerivedN> & N,
+			Eigen::VectorXi & A,
+			Eigen::VectorXi & SV);
 }
 
 #ifndef IGL_STATIC_LIBRARY
