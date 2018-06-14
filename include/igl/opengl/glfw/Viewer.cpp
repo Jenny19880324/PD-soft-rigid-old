@@ -46,10 +46,11 @@
 #include <igl/rbc.h>
 
 extern Eigen::MatrixXd U, V, C, P;
-extern Eigen::MatrixXi T, F;
+extern Eigen::MatrixXi T, F, ST;
 extern Eigen::Matrix<double, Eigen::Dynamic, 3> bc;
 extern Eigen::VectorXi b;
 extern Eigen::VectorXi N;
+extern Eigen::VectorXi SV;
 extern std::vector<std::vector<int>> I;
 extern igl::RBCData rbc_data;
 extern bool gravity_enabled;
@@ -824,8 +825,10 @@ namespace glfw
 
 	U = data().V;
 	V = data().VV;
+	SV = data().SV;
 	T = data().T;
 	F = data().F;
+	ST = data().ST;
 	N = data().N;
 	C = data().C;
 	P = data().P;
@@ -836,6 +839,7 @@ namespace glfw
 	output_screenshot = data().output_screenshot;
 	anim_t = 0.0;
 	anim_f = 0;
+	rbc_data.vel = data().Vel;
 	rbc_data.with_dynamics = data().with_dynamics;
 	rbc_data.max_iter = data().max_iter;
 	rbc_data.energy = data().energy;
@@ -845,10 +849,12 @@ namespace glfw
 	rbc_data.mu = data().mu;
 	rbc_data.mass_scaling = data().mass_scaling;
 	rbc_data.g = data().g;
+	rbc_data.h = data().h;
 	rbc_data.floor_y = data().floor_y;
 	rbc_data.constraint_weight = data().constraint_weight;
 	rbc_data.collision_weight = data().collision_weight;
 	rbc_data.collision_enabled = data().collision_enabled;
+	rbc_data.self_collision_enabled = data().self_collision_enabled;
 
 	if (data().b.size() > 0) {
 		b = data().b[0];
@@ -904,6 +910,9 @@ namespace glfw
   IGL_INLINE bool Viewer::save_scene(std::string fname)
   {
 	  data().VV = V;
+	  data().SV = SV;
+	  data().ST = ST;
+	  data().F = F;
 	  data().T = T;
 	  data().N = N;
 	  data().C = C;
@@ -911,8 +920,10 @@ namespace glfw
 	  data().I = I;
 	  data().gravity_enabled = gravity_enabled;
 	  data().collision_enabled = rbc_data.collision_enabled;
+	  data().self_collision_enabled = rbc_data.self_collision_enabled;
 	  data().floor_enabled = floor_enabled;
 	  data().external_force_enabled = external_force_enabled;
+	  data().Vel = rbc_data.vel;
 	  data().with_dynamics = rbc_data.with_dynamics;
 	  data().max_iter = rbc_data.max_iter;
 	  data().energy = rbc_data.energy;
@@ -922,6 +933,7 @@ namespace glfw
 	  data().mu = rbc_data.mu;
 	  data().mass_scaling = rbc_data.mass_scaling;
 	  data().g = rbc_data.g;
+	  data().h = rbc_data.h;
 	  data().floor_y = rbc_data.floor_y;
 	  data().constraint_weight = rbc_data.constraint_weight;
 	  data().collision_weight = rbc_data.collision_weight;

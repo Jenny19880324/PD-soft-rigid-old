@@ -572,7 +572,7 @@ IGL_INLINE void igl::fit_hinged_rigid_motion(
 		}
 		//std::cout << "obj = " << obj << std::endl;
 
-		if (obj < 1e-2) {
+		if (obj < 1e-6) {
 			break;
 		}
 		iter++;

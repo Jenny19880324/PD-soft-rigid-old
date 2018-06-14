@@ -56,7 +56,8 @@ IGL_INLINE void igl::fit_rigid_motion(
 	// 4. Compute the sigular value decomposition S = U * Sigma * V'
 	Matrix3d ti, ui, vi;
 	Vector3d _;
-	igl::polar_svd(S, R, ti, ui, _, vi);
+	//igl::polar_svd(S, R, ti, ui, _, vi);
+	igl::polar_svd3x3(S, R);
 	
 	// 5. Compute the optimal translation as
 	t = q_bar - p_bar * R;

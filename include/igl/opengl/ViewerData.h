@@ -136,16 +136,20 @@ public:
   // data needs to be serialized
   Eigen::MatrixXd V; // Vertices of the current mesh (#V x 3) 
   Eigen::MatrixXd VV; // Vertices of the restpose mesh (#V x 3)
+  Eigen::MatrixXd Vel; // Velocity of the current mesh (#V x 3)
   Eigen::MatrixXd P; // Vertices of restpose joints (#P x 3)
   Eigen::MatrixXd C; // color of the mesh (#F x 4)
   Eigen::MatrixXi F; // Faces of the mesh (#F x 3)
+  Eigen::MatrixXi ST; // Surface Faces of the mesh (#ST x 3)
   Eigen::MatrixXi T; // Tetrahedron of the mesh (#T x 4)
   Eigen::VectorXi N; // number of vertices in each region
+  Eigen::VectorXi SV; // indices of vertices on the surface
   std::vector<Eigen::Matrix<double, Eigen::Dynamic, 3>> bc; // constrained vertices
   std::vector<Eigen::VectorXi> b;                           // constrained vertices index
   std::vector<std::vector<int>> I;                          // Vertex indices involved int joints
   bool gravity_enabled;
   bool collision_enabled;
+  bool self_collision_enabled;
   bool floor_enabled;
   bool external_force_enabled;
   bool hinge_enabled;
@@ -255,7 +259,10 @@ namespace igl
     inline void serialization(bool s, igl::opengl::ViewerData& obj, std::vector<char>& buffer)
     {
       SERIALIZE_MEMBER(V);
+	  SERIALIZE_MEMBER(SV);
+	  SERIALIZE_MEMBER(Vel);
       SERIALIZE_MEMBER(F);
+	  SERIALIZE_MEMBER(ST);
 	  SERIALIZE_MEMBER(VV);
 	  SERIALIZE_MEMBER(C);
 	  SERIALIZE_MEMBER(T);
@@ -266,6 +273,7 @@ namespace igl
 	  SERIALIZE_MEMBER(bc);
 	  SERIALIZE_MEMBER(gravity_enabled);
 	  SERIALIZE_MEMBER(collision_enabled);
+	  SERIALIZE_MEMBER(self_collision_enabled);
 	  SERIALIZE_MEMBER(floor_enabled);
 	  SERIALIZE_MEMBER(external_force_enabled);
 	  SERIALIZE_MEMBER(hinge_enabled);
@@ -279,6 +287,7 @@ namespace igl
 	  SERIALIZE_MEMBER(mu);
 	  SERIALIZE_MEMBER(mass_scaling);
 	  SERIALIZE_MEMBER(g);
+	  SERIALIZE_MEMBER(h);
 	  SERIALIZE_MEMBER(floor_y);
 	  SERIALIZE_MEMBER(constraint_weight);
 	  SERIALIZE_MEMBER(collision_weight);

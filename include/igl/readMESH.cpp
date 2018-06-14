@@ -849,7 +849,7 @@ template <
 		Eigen::PlainObjectBase<DerivedV> & V,
 		Eigen::PlainObjectBase<DerivedT> & T,
 		Eigen::PlainObjectBase<DerivedF> & F,
-		Eigen::PlainObjectBase<DerivedF> & SF,
+		Eigen::PlainObjectBase<DerivedF> & ST,
 		Eigen::PlainObjectBase<DerivedC> & C,
 		Eigen::PlainObjectBase<DerivedN> & N,
 		Eigen::VectorXi & A,
@@ -862,7 +862,7 @@ template <
 		fprintf(stderr, "IOError: %s could not be opened...", mesh_file_name.c_str());
 		return false;
 	}
-	return readMESH(mesh_file, V, T, F, SF, C, N, A, SV);
+	return readMESH(mesh_file, V, T, F, ST, C, N, A, SV);
 }
 
 
@@ -877,7 +877,7 @@ template <
 		Eigen::PlainObjectBase<DerivedV> & V,
 		Eigen::PlainObjectBase<DerivedT> & T,
 		Eigen::PlainObjectBase<DerivedF> & F,
-		Eigen::PlainObjectBase<DerivedF> & SF,
+		Eigen::PlainObjectBase<DerivedF> & ST,
 		Eigen::PlainObjectBase<DerivedC> & C,
 		Eigen::PlainObjectBase<DerivedN> & N,
 		Eigen::VectorXi & A,
@@ -886,7 +886,7 @@ template <
 	V.resize(0, Eigen::NoChange);
 	T.resize(0, Eigen::NoChange);
 	F.resize(0, Eigen::NoChange);
-	SF.resize(0, Eigen::NoChange);
+	ST.resize(0, Eigen::NoChange);
 	C.resize(0, Eigen::NoChange);
 	N.resize(0, Eigen::NoChange);
 	A.resize(0, Eigen::NoChange);
@@ -1026,11 +1026,8 @@ template <
 		return false;
 	}
 
-	// allocate space for triangles
-	SF.resize(number_of_triangles, 3);
 	// triangle indices
 	int tri[3];
-	int number_of_surface_triangles = 0;
 	std::set<int> SVI; // surface vertex index
 	for (int i = 0; i<number_of_triangles; i++)
 	{
@@ -1041,21 +1038,10 @@ template <
 		}
 
 		if (extra == 1) { // 1 means boundary, 0 means non-boundary
-			SF(number_of_surface_triangles, 0) = tri[0] - 1;
-			SF(number_of_surface_triangles, 1) = tri[1] - 1;
-			SF(number_of_surface_triangles, 2) = tri[2] - 1;
 			SVI.insert(tri[0] - 1);
 			SVI.insert(tri[1] - 1);
 			SVI.insert(tri[2] - 1);
-			number_of_surface_triangles++;
 		}
-	}
-	SF.conservativeResize(number_of_surface_triangles, 3);
-	SV.resize(SVI.size());
-	int number_of_surface_vertices = 0;
-	for (auto it = SVI.begin(); it != SVI.end(); it++) {
-		SV(number_of_surface_vertices) = *it;
-		number_of_surface_vertices++;
 	}
 
 	// eat comments
@@ -1091,6 +1077,7 @@ template <
 	// region < 0  => rigid tet, bone tet
 	std::map<int, std::set<int>> rigid_vertex_map;
 	std::unordered_set<int> rigid_vertex_set;
+	int number_of_surface_tetrahedra = 0;
 	for (int i = 0; i<number_of_tetrahedra; i++)
 	{
 		if (5 != fscanf(mesh_file, " %d %d %d %d %d", &a, &b, &c, &d, &extra))
@@ -1164,9 +1151,28 @@ template <
 
 	// update index of tetrahedron because V is rearranged
 	for (int i = 0; i < number_of_tetrahedra; i++) {
+		if (SVI.find(T(i, 0)) != SVI.end() ||
+			SVI.find(T(i, 1)) != SVI.end() ||
+			SVI.find(T(i, 2)) != SVI.end() ||
+			SVI.find(T(i, 3)) != SVI.end()) { // tetrahedron on surface
+			ST.conservativeResize(number_of_surface_tetrahedra + 1, 4);
+			ST(number_of_surface_tetrahedra, 0) = RI[T(i, 0)];
+			ST(number_of_surface_tetrahedra, 1) = RI[T(i, 1)];
+			ST(number_of_surface_tetrahedra, 2) = RI[T(i, 2)];
+			ST(number_of_surface_tetrahedra, 3) = RI[T(i, 3)];
+			number_of_surface_tetrahedra++;
+		}
+
 		for (int j = 0; j < 4; j++) {
 			T(i, j) = RI[T(i, j)];
 		}
+	}
+
+	SV.resize(SVI.size());
+	int number_of_surface_vertices = 0;
+	for (auto it = SVI.begin(); it != SVI.end(); it++) {
+		SV(number_of_surface_vertices) = RI[*it];
+		number_of_surface_vertices++;
 	}
 
 	// construct Triangle from Tetrahedron

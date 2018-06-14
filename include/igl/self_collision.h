@@ -7,15 +7,26 @@
 #include <Eigen/Core>
 #include <Eigen/Sparse>
 #include <vector>
+#include <set>
 namespace igl
 {
-	template<typename DerivedV, typename DerivedF, typename Scalar>
+	template<typename DerivedV, typename DerivedT, typename Scalar>
 	IGL_INLINE bool self_collision(
 		const Eigen::PlainObjectBase <DerivedV> & V,
-		const Eigen::PlainObjectBase <DerivedF> & F,
 		const Eigen::VectorXi & SV,
-		const Eigen::PlainObjectBase <DerivedF> & SF,
+		const Eigen::PlainObjectBase <DerivedT> & ST,
 		std::vector<Eigen::Triplet<Scalar>> & L_triplets);
+
+
+	template<typename DerivedV, typename DerivedT>
+	IGL_INLINE bool self_collision(
+		const Eigen::PlainObjectBase < DerivedV > & V,
+		const Eigen::VectorXi & SV,
+		const Eigen::PlainObjectBase < DerivedT > & ST,
+		const std::set<int> &b_set,
+		Eigen::VectorXi & b,
+		Eigen::MatrixX3d & bc);
+
 
 }
 #ifndef IGL_STATIC_LIBRARY

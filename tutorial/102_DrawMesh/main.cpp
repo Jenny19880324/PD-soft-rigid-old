@@ -27,6 +27,7 @@
 #include <unordered_map>
 #include <igl/fit_hinged_rigid_motion.h>
 #include <igl/png/writePNG.h>
+#include <igl/self_collision.h>
 
 
 bool vertex_pick_enabled = false;
@@ -51,7 +52,7 @@ Eigen::MatrixXd visible_C;
 Eigen::MatrixXd V, U, P;
 Eigen::MatrixXi T;
 Eigen::MatrixXi F;
-Eigen::MatrixXi SF;
+Eigen::MatrixXi ST;
 Eigen::MatrixXd C;
 Eigen::Matrix<double, Eigen::Dynamic, 3> bc;
 Eigen::VectorXi b;
@@ -60,6 +61,7 @@ std::vector<std::vector<int>> I;
 
 int pressed_b;
 int anim_f = 0;
+float angular_velocity_scaling = 1.0;
 double anim_t = 0.0;
 double anim_t_dir = 0.033;
 igl::RBCData rbc_data; 
@@ -172,12 +174,12 @@ void updateTriVisibility(
 
 template <typename DerivedV, typename DerivedT, typename DerivedF, typename DerivedC>
 void updateVisibleIndices(
-	const SlicePlane &slice_plane,
-	const Eigen::PlainObjectBase<DerivedV> &V,
-	const Eigen::PlainObjectBase<DerivedT> &T,
-	const Eigen::PlainObjectBase<DerivedC> &C,
-	Eigen::PlainObjectBase<DerivedF> &visible_F,
-	Eigen::PlainObjectBase<DerivedC> &visible_C)
+	const SlicePlane & slice_plane,
+	const Eigen::PlainObjectBase<DerivedV> & V,
+	const Eigen::PlainObjectBase<DerivedT> & T,
+	const Eigen::PlainObjectBase<DerivedC> & C,
+	Eigen::PlainObjectBase<DerivedF> & visible_F,
+	Eigen::PlainObjectBase<DerivedC> & visible_C)
 {
 	visible_F.resize(T.rows() * 4, 3); // max out the size for now
 	visible_C.resize(T.rows() * 4, 4);
@@ -657,8 +659,35 @@ bool pre_draw(igl::opengl::glfw::Viewer &viewer)
 			// green means b is precomputed, it's not temp_b anymore.
 			viewer.data().move_points(bc_ith_frame, Eigen::RowVector3d(0.0, 1.0, 0.0), 0);
 		}
-		igl::rbc_precomputation(V, U, T, N, V.cols(), b, rbc_data);
-		igl::rbc_solve(bc, rbc_data, U);
+
+		Eigen::VectorXi colliding_b;
+		Eigen::MatrixX3d colliding_bc;
+		std::set<int> b_set;
+		for (int b_i = 0; b_i < b.rows(); b_i++) {
+			b_set.insert(b(b_i));
+		}
+		igl::self_collision(U, SV, ST, b_set, temp_b, temp_bc);
+		std::cout << "temp_b = " << temp_b << std::endl;
+		std::cout << "temp_bc = " << temp_bc << std::endl;
+
+		if (temp_b.rows() > 1) {
+			colliding_bc.resize(bc.rows() + temp_bc.rows(), Eigen::NoChange);
+			colliding_b.resize(b.rows() + temp_b.rows());
+			colliding_bc.block(0, 0, bc.rows(), bc.cols()) = bc;
+			colliding_bc.block(bc.rows(), 0, temp_bc.rows(), 3) = temp_bc;
+			colliding_b.block(0, 0, b.rows(), 1) = b;
+			colliding_b.block(b.rows(), 0, temp_b.rows(), 1) = temp_b;
+			temp_b.resize(0);
+			temp_bc.resize(0, Eigen::NoChange);
+		}
+		else {
+			colliding_bc = bc;
+			colliding_b = b;
+		}
+
+
+		igl::rbc_precomputation(V, U, T, N, V.cols(), colliding_b, rbc_data);
+		igl::rbc_solve(colliding_bc, rbc_data, U);
 		viewer.data().set_vertices(U);
 		viewer.data().compute_normals();
 
@@ -898,7 +927,7 @@ if (ImGui::Button("clear")) {
 	  // Simulation panel
 	// Define next window position + size
 	  ImGui::SetNextWindowPos(ImVec2(180.f * menu.menu_scaling(), 0), ImGuiSetCond_FirstUseEver);
-	  ImGui::SetNextWindowSize(ImVec2(200, 400), ImGuiSetCond_FirstUseEver);
+	  ImGui::SetNextWindowSize(ImVec2(200, 480), ImGuiSetCond_FirstUseEver);
 	  ImGui::Begin(
 		  "Simulation", nullptr
 	  );
@@ -923,6 +952,7 @@ if (ImGui::Button("clear")) {
 		  anim_f = 0;
 		  anim_t = 0.;
 
+		  rbc_data.vel.setZero();
 		  igl::rbc_precomputation(V, T, N, V.cols(), b, rbc_data);
 	  }
 
@@ -947,6 +977,9 @@ if (ImGui::Button("clear")) {
 
 	  if (ImGui::Checkbox("collision", &rbc_data.collision_enabled)) {
 
+	  }
+
+	  if (ImGui::Checkbox("self collision", &rbc_data.self_collision_enabled)) {
 	  }
 
 	  if (ImGui::Checkbox("floor", &floor_enabled)) {
@@ -977,6 +1010,7 @@ if (ImGui::Button("clear")) {
 		  }
 	  }
 	  ImGui::SameLine();
+
 	  if (ImGui::DragFloat("floor y", &rbc_data.floor_y, 0.1, -10.0, 10.0)) {
 		  double floor_y = rbc_data.floor_y;
 		  viewer.selected_data_index++;
@@ -991,10 +1025,14 @@ if (ImGui::Button("clear")) {
 	  }
 
 	  // Expose the same variable directly
-	  if (ImGui::DragFloat("mu", &rbc_data.mu, 0.0, 0.0, 10.0)) {
+	  if (ImGui::DragFloat("h", &rbc_data.h, 0.1, 0.0, 1.0)) {
+
+	  }
+	  if (ImGui::DragFloat("mu", &rbc_data.mu, 0.1, 0.0, 10.0)) {
 		  igl::rbc_precomputation(V, T, N, V.cols(), b, rbc_data);
 	  }
-	  if (ImGui::DragFloat("mass scaling", &rbc_data.mass_scaling, 1e-3, 0.0, 1.0)) {}
+	  if (ImGui::DragFloat("mass scaling", &rbc_data.mass_scaling, 1e-3, 0.0, 1.0)) {
+	  }
 	  ImGui::PopItemWidth();
 
 	  if (ImGui::Checkbox("external force", &external_force_enabled)) {
@@ -1034,9 +1072,28 @@ if (ImGui::Button("clear")) {
 	  }
 
 	  if (ImGui::Combo("Bone Constraint", (int *)(&rbc_data.bone_constraint), "affine\0rigid\0constrained\0")) {
-
+	  }
+	  if (ImGui::DragFloat("angular velocity scaling", &angular_velocity_scaling, 1.0, 0.0, 100.0)) {
 	  }
 	  ImGui::PopItemWidth();
+	  if (ImGui::Button("Apply Angular Momemtum")) {
+		  if (bc.rows() < 1) {
+			  std::cout << "Please select one vertex as the pinpoint.";
+		  }
+		  else {
+			  rbc_data.with_dynamics = true;
+			  igl::rbc_precomputation(V, T, N, V.cols(), b, rbc_data);
+			  rbc_data.vel.resize(U.rows(), 3);
+			  Eigen::RowVector3d pinpoint = bc.row(0);
+			  Eigen::RowVector3d axis = Eigen::RowVector3d(0, 0, 1);
+			  for (int i = 0; i < U.rows(); i++) {
+				  Eigen::RowVector3d r = U.row(i) - pinpoint;
+				  Eigen::RowVector3d v = r.cross(axis);
+				  rbc_data.vel.row(i) = angular_velocity_scaling * v;
+			  }
+		  }
+
+	  }
 	  if (ImGui::Button("Output Moving Constraint")) {
 		  // create b and bc by code because it's difficult to 
 		  // specify by viewport operation
@@ -1095,7 +1152,7 @@ if (ImGui::Button("clear")) {
 	  ImGui::End();
 
 	  // Mesh panel
-	  ImGui::SetNextWindowPos(ImVec2(180.f * menu.menu_scaling(), 400), ImGuiSetCond_FirstUseEver);
+	  ImGui::SetNextWindowPos(ImVec2(180.f * menu.menu_scaling(), 480), ImGuiSetCond_FirstUseEver);
 	  ImGui::SetNextWindowSize(ImVec2(200, 80), ImGuiSetCond_FirstUseEver);
 	  ImGui::Begin(
 		  "Mesh", nullptr
@@ -1106,7 +1163,7 @@ if (ImGui::Button("clear")) {
 	  ImGui::End();
 
 	  // Output panel
-	  ImGui::SetNextWindowPos(ImVec2(180.f * menu.menu_scaling(), 480), ImGuiSetCond_FirstUseEver);
+	  ImGui::SetNextWindowPos(ImVec2(180.f * menu.menu_scaling(), 560), ImGuiSetCond_FirstUseEver);
 	  ImGui::SetNextWindowSize(ImVec2(200, 80), ImGuiSetCond_FirstUseEver);
 	  ImGui::Begin(
 		  "Output", nullptr
@@ -1115,7 +1172,7 @@ if (ImGui::Button("clear")) {
 	  if (ImGui::Checkbox("screenshot", &output_screenshot)) {
 
 	  }
-	  ImGui::End();
+	  ImGui::End(); 
 
   };
 
@@ -1314,7 +1371,7 @@ if (ImGui::Button("clear")) {
   // Precomputation
   //rbc_data.max_iter = 100;
   //rbc_data.with_dynamics = true;
-  rbc_data.h = 0.5;
+  rbc_data.h = 0.033;
   igl::rbc_precomputation(V, T, N, V.cols(), b, rbc_data);
 
   // Plot the mesh

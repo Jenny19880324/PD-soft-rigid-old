@@ -6,9 +6,12 @@
 #include "fit_hinged_rigid_motion.h"
 #include "laplacian_matrix.h"
 #include "rbc_rhs.h"
+#include "self_collision.h"
 
 
 extern Eigen::MatrixXd P;
+extern Eigen::MatrixXi ST;
+extern Eigen::VectorXi SV;
 extern std::vector<std::vector<int>> I;
 
 template<
@@ -95,7 +98,9 @@ IGL_INLINE bool igl::rbc_precomputation(
 		//data.f_ext = MatrixXd::Zero(n, data.dim);
 		data.f_ext = Eigen::RowVector3d(0.,(double)data.g, 0.).replicate(V.rows(), 1);
 		data.f_ext = data.M * data.f_ext;
-		data.vel = MatrixXd::Zero(n, data.dim);
+		if (data.vel.rows() == 0) {
+			data.vel = MatrixXd::Zero(n, data.dim);
+		}
 	}
 
 	if (eff_energy == RBC_ENERGY_TYPE_RBC) {
@@ -200,18 +205,14 @@ template <
 	shape_matrix(V, F, eff_energy, data.SM);
 	typedef SparseMatrix<Scalar> SparseMatrixS;
 	SparseMatrixS L;
+	std::vector<Triplet<Scalar>> L_triplets;
 
-	laplacian_matrix(V, F, L);
-
-	rbc_rhs(V, F, data.dim, eff_energy, data.J);
+	//laplacian_matrix(V, F, L);
+	laplacian_matrix(V, F, L_triplets);
 
 	if (data.constraint == SOFT_CONSTRAINT) {
 		for (int i = 0; i < b.rows(); i++) {
-			SparseMatrix<Scalar> Ai(1, V.rows());
-			vector<Triplet<Scalar>> Ai_IJV;
-			Ai_IJV.push_back(Triplet<Scalar>(0, b(i), 1.0));
-			Ai.setFromTriplets(Ai_IJV.begin(), Ai_IJV.end());
-			L += data.constraint_weight * Ai.transpose() * Ai;
+			L_triplets.push_back(Triplet<Scalar>(b(i), b(i), data.constraint_weight));
 		}
 	}
 
@@ -220,16 +221,19 @@ template <
 		double floor_y = data.floor_y;
 		for (int i = 0; i < U.rows(); i++) {
 			if (U.row(i).y() < floor_y) {
-				SparseMatrix<Scalar> Ai(1, V.rows());
-				vector<Triplet<Scalar>> Ai_IJV;
-				Ai_IJV.push_back(Triplet<Scalar>(0, i, 1.0));
-				Ai.setFromTriplets(Ai_IJV.begin(), Ai_IJV.end());
-				L += data.collision_weight * Ai.transpose() * Ai;
+				L_triplets.push_back(Triplet<Scalar>(i, i, data.collision_weight));
 			}
 		}
 	}
 
+	//if (data.self_collision_enabled) {
+	//	self_collision(U, SV, ST, L_triplets);
+	//}
 
+	L.resize(V.rows(), V.rows());
+	L.setZero();
+	L.setFromTriplets(L_triplets.begin(), L_triplets.end());
+	L.makeCompressed();
 	SparseMatrix<double> Q = L.eval();
 
 	if (data.with_dynamics)

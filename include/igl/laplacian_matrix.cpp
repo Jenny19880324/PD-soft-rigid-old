@@ -81,9 +81,63 @@ IGL_INLINE void igl::laplacian_matrix(
 }
 
 
+template <typename DerivedV, typename DerivedF, typename Scalar>
+IGL_INLINE void igl::laplacian_matrix(
+	const Eigen::MatrixBase<DerivedV> & V,
+	const Eigen::MatrixBase<DerivedF> & F,
+	std::vector<Eigen::Triplet<Scalar>> & L_triplets)
+{
+	using namespace Eigen;
+	using namespace std;
+
+	L_triplets.reserve(16 * F.rows());
+	int simplex_size = F.cols();
+	// 4 for tets
+	assert(simplex_size == 4);
+
+	// Loop over tetrahedra
+	for (int i = 0; i < F.rows(); i++) {
+		Matrix<Scalar, 3, 3> Dm, Dm_inv_trans;
+		Dm << V(F(i, 0), 0) - V(F(i, 3), 0), V(F(i, 1), 0) - V(F(i, 3), 0), V(F(i, 2), 0) - V(F(i, 3), 0),
+			V(F(i, 0), 1) - V(F(i, 3), 1), V(F(i, 1), 1) - V(F(i, 3), 1), V(F(i, 2), 1) - V(F(i, 3), 1),
+			V(F(i, 0), 2) - V(F(i, 3), 2), V(F(i, 1), 2) - V(F(i, 3), 2), V(F(i, 2), 2) - V(F(i, 3), 2);
+		Dm_inv_trans = Dm.inverse().transpose();
+
+		Eigen::Vector3d v4 = -Dm_inv_trans.col(0) - Dm_inv_trans.col(1) - Dm_inv_trans.col(2);
+		for (int row = 0; row < 3; row++) {
+			for (int col = 0; col < 3; col++) {
+
+				L_triplets.push_back(Triplet<Scalar>(
+					F(i, row),
+					F(i, col),
+					Dm_inv_trans.col(row).dot(Dm_inv_trans.col(col))
+					));
+			}
+			L_triplets.push_back(Triplet<Scalar>(
+				F(i, row),
+				F(i, 3),
+				Dm_inv_trans.col(row).dot(v4)
+				));
+		}
+		for (int col = 0; col < 3; col++) {
+			L_triplets.push_back(Triplet<Scalar>(
+				F(i, 3),
+				F(i, col),
+				Dm_inv_trans.col(col).dot(v4)
+				));
+		}
+		L_triplets.push_back(Triplet<Scalar>(
+			F(i, 3),
+			F(i, 3),
+			v4.dot(v4)
+			));
+	}
+}
+
 
 #ifdef IGL_STATIC_LIBRARY
 // Explicit template instantiation
 template void igl::laplacian_matrix<Eigen::Matrix<double, -1, -1, 0, -1, -1>, Eigen::Matrix<int, -1, -1, 0, -1, -1>, double>(Eigen::MatrixBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> > const &, Eigen::MatrixBase<Eigen::Matrix<int, -1, -1, 0, -1, -1> > const &, Eigen::SparseMatrix<double, 0, int> &);
+template void igl::laplacian_matrix< Eigen::Matrix<double, -1, -1, 0, -1, -1>, Eigen::Matrix<int, -1, -1, 0, -1, -1>, double>(Eigen::MatrixBase< Eigen::Matrix<double, -1, -1, 0, -1, -1> > const &, Eigen::MatrixBase< Eigen::Matrix<int, -1, -1, 0, -1, -1> > const &, std::vector< Eigen::Triplet<double, int>, std::allocator< Eigen::Triplet<double, int> > > &);
 
 #endif
