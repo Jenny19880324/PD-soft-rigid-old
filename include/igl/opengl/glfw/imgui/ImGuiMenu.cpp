@@ -11,6 +11,7 @@
 #include <igl/writeMESH.h>
 #include <igl/readJOINT.h>
 #include <igl/project.h>
+#include <igl/self_collision.h>
 #include <imgui/imgui.h>
 #include <imgui_impl_glfw_gl3.h>
 #include <imgui_fonts_droid_sans.h>
@@ -19,9 +20,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 extern Eigen::MatrixXd V, U, C, P;
-extern Eigen::MatrixXi T, F, ST;
-extern Eigen::VectorXi N, A, SV;
+extern Eigen::MatrixXi T, F, SF;
+extern Eigen::VectorXi N, A;
 extern std::vector<std::vector<int>> I;
+extern std::map<int, std::set<int>> neighbors;
+extern double s_grid;
 
 namespace igl
 {
@@ -85,9 +88,11 @@ IGL_INLINE bool ImGuiMenu::load(std::string filename)
 			assert(V.rows() == U.rows());
 		}
 		else {
-			igl::readMESH(filename, V, T, F, ST, C, N, A, SV);
+			igl::readMESH(filename, V, T, F, SF, C, N, A);
 			viewer->data().VV = V;
 			U = V;
+			find_neighbors(T, neighbors);
+			s_grid = compute_grid_size(V, T);
 		}
 		
 		return true;

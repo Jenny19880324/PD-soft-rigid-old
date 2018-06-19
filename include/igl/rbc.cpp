@@ -10,7 +10,7 @@
 
 
 extern Eigen::MatrixXd P;
-extern Eigen::MatrixXi ST;
+extern Eigen::MatrixXi SF;
 extern Eigen::VectorXi SV;
 extern std::vector<std::vector<int>> I;
 
@@ -226,10 +226,6 @@ template <
 		}
 	}
 
-	//if (data.self_collision_enabled) {
-	//	self_collision(U, SV, ST, L_triplets);
-	//}
-
 	L.resize(V.rows(), V.rows());
 	L.setZero();
 	L.setFromTriplets(L_triplets.begin(), L_triplets.end());
@@ -249,8 +245,7 @@ template <
 		// Dummy external forces
 		//data.f_ext = MatrixXd::Zero(n, data.dim);
 		data.f_ext = Eigen::RowVector3d(0., (double)data.g, 0.).replicate(V.rows(), 1);
-		data.f_ext = data.M * data.f_ext;
-		
+		data.f_ext = data.M * data.f_ext;	
 	}
 
 	if (eff_energy == RBC_ENERGY_TYPE_RBC) {
@@ -362,7 +357,7 @@ IGL_INLINE bool igl::rbc_solve(
 				F.block(3 * r, 0, 3, 3) = Ds * Dm.inverse();
 			}
 			fit_rotations(F, R);
- 			
+
 			MatrixXd Dl;
 			if (data.with_dynamics)
 			{ 

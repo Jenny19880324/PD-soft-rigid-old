@@ -28,6 +28,7 @@
 #include <igl/fit_hinged_rigid_motion.h>
 #include <igl/png/writePNG.h>
 #include <igl/self_collision.h>
+#include <igl/spatial_hash.h>
 
 
 bool vertex_pick_enabled = false;
@@ -51,19 +52,20 @@ Eigen::MatrixXd visible_C;
 
 Eigen::MatrixXd V, U, P;
 Eigen::MatrixXi T;
-Eigen::MatrixXi F;
-Eigen::MatrixXi ST;
+Eigen::MatrixXi F, SF; 
 Eigen::MatrixXd C;
 Eigen::Matrix<double, Eigen::Dynamic, 3> bc;
 Eigen::VectorXi b;
-Eigen::VectorXi N, A, SV;
+Eigen::VectorXi N, A;
 std::vector<std::vector<int>> I;
+std::map<int, std::set<int>> neighbors;
 
 int pressed_b;
 int anim_f = 0;
 float angular_velocity_scaling = 1.0;
 double anim_t = 0.0;
 double anim_t_dir = 0.033;
+double s_grid = 0.;
 igl::RBCData rbc_data; 
 igl::opengl::MarqueeGL marquee_gl;
 igl::opengl::FanGL fan_gl;
@@ -660,34 +662,16 @@ bool pre_draw(igl::opengl::glfw::Viewer &viewer)
 			viewer.data().move_points(bc_ith_frame, Eigen::RowVector3d(0.0, 1.0, 0.0), 0);
 		}
 
-		Eigen::VectorXi colliding_b;
-		Eigen::MatrixX3d colliding_bc;
 		std::set<int> b_set;
 		for (int b_i = 0; b_i < b.rows(); b_i++) {
 			b_set.insert(b(b_i));
 		}
-		igl::self_collision(U, SV, ST, b_set, temp_b, temp_bc);
-		std::cout << "temp_b = " << temp_b << std::endl;
-		std::cout << "temp_bc = " << temp_bc << std::endl;
-
-		if (temp_b.rows() > 1) {
-			colliding_bc.resize(bc.rows() + temp_bc.rows(), Eigen::NoChange);
-			colliding_b.resize(b.rows() + temp_b.rows());
-			colliding_bc.block(0, 0, bc.rows(), bc.cols()) = bc;
-			colliding_bc.block(bc.rows(), 0, temp_bc.rows(), 3) = temp_bc;
-			colliding_b.block(0, 0, b.rows(), 1) = b;
-			colliding_b.block(b.rows(), 0, temp_b.rows(), 1) = temp_b;
-			temp_b.resize(0);
-			temp_bc.resize(0, Eigen::NoChange);
-		}
-		else {
-			colliding_bc = bc;
-			colliding_b = b;
-		}
+		
+		igl::self_collision(U, T, SF, neighbors, b_set, rbc_data);
 
 
-		igl::rbc_precomputation(V, U, T, N, V.cols(), colliding_b, rbc_data);
-		igl::rbc_solve(colliding_bc, rbc_data, U);
+		//igl::rbc_precomputation(V, U, T, N, V.cols(), colliding_b, rbc_data);
+		igl::rbc_solve(bc, rbc_data, U);
 		viewer.data().set_vertices(U);
 		viewer.data().compute_normals();
 
@@ -976,7 +960,6 @@ if (ImGui::Button("clear")) {
 	  }
 
 	  if (ImGui::Checkbox("collision", &rbc_data.collision_enabled)) {
-
 	  }
 
 	  if (ImGui::Checkbox("self collision", &rbc_data.self_collision_enabled)) {

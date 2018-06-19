@@ -48,7 +48,7 @@ namespace igl
 		bool with_dynamics;
 		bool collision_enabled;
 		bool self_collision_enabled;
-		Eigen::MatrixXd f_ext, vel, Ab, V, T;
+		Eigen::MatrixXd f_ext, f_gravity, vel, Ab, V, T;
 		float h;
 		float mu;
 		float mass_scaling;
@@ -78,6 +78,7 @@ namespace igl
 		collision_enabled(false),
 		self_collision_enabled(false),
 		f_ext(),
+		f_gravity(),
 		h(0.033),
 		mu(1.0),
 		mass_scaling(1.0),

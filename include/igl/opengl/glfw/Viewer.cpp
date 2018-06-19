@@ -44,14 +44,15 @@
 #include <igl/unproject.h>
 #include <igl/serialize.h>
 #include <igl/rbc.h>
+#include <igl/spatial_hash.h>
 
 extern Eigen::MatrixXd U, V, C, P;
-extern Eigen::MatrixXi T, F, ST;
+extern Eigen::MatrixXi T, F, SF;
 extern Eigen::Matrix<double, Eigen::Dynamic, 3> bc;
 extern Eigen::VectorXi b;
 extern Eigen::VectorXi N;
-extern Eigen::VectorXi SV;
 extern std::vector<std::vector<int>> I;
+extern std::map<int, std::set<int>> neighbors;
 extern igl::RBCData rbc_data;
 extern bool gravity_enabled;
 extern bool floor_enabled;
@@ -60,6 +61,7 @@ extern bool output_moving_constraints;
 extern bool output_screenshot;
 extern int anim_f;
 extern double anim_t;
+extern double s_grid;
 
 // Internal global variables used for glfw event handling
 static igl::opengl::glfw::Viewer * __viewer;
@@ -825,14 +827,15 @@ namespace glfw
 
 	U = data().V;
 	V = data().VV;
-	SV = data().SV;
 	T = data().T;
 	F = data().F;
-	ST = data().ST;
+	SF = data().SF;
 	N = data().N;
 	C = data().C;
 	P = data().P;
 	I = data().I;
+	s_grid = data().s_grid;
+	neighbors = data().neighbors;
 	gravity_enabled = data().gravity_enabled;
 	floor_enabled = data().floor_enabled;
 	external_force_enabled = data().external_force_enabled;
@@ -910,14 +913,15 @@ namespace glfw
   IGL_INLINE bool Viewer::save_scene(std::string fname)
   {
 	  data().VV = V;
-	  data().SV = SV;
-	  data().ST = ST;
-	  data().F = F;
-	  data().T = T;
-	  data().N = N;
-	  data().C = C;
-	  data().P = P;
-	  data().I = I;
+	  data().F  = F;
+	  data().SF = SF;
+	  data().T  = T;
+	  data().N  = N;
+	  data().C  = C;
+	  data().P  = P;
+	  data().I  = I;
+	  data().s_grid = s_grid;
+	  data().neighbors = neighbors;
 	  data().gravity_enabled = gravity_enabled;
 	  data().collision_enabled = rbc_data.collision_enabled;
 	  data().self_collision_enabled = rbc_data.self_collision_enabled;
@@ -933,7 +937,6 @@ namespace glfw
 	  data().mu = rbc_data.mu;
 	  data().mass_scaling = rbc_data.mass_scaling;
 	  data().g = rbc_data.g;
-	  data().h = rbc_data.h;
 	  data().floor_y = rbc_data.floor_y;
 	  data().constraint_weight = rbc_data.constraint_weight;
 	  data().collision_weight = rbc_data.collision_weight;

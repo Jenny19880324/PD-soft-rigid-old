@@ -13,6 +13,7 @@
 #include <string>
 #include <vector>
 #include <cstdio>
+#include <unordered_map>
 
 namespace igl
 {
@@ -113,6 +114,41 @@ namespace igl
 		Eigen::PlainObjectBase<DerivedN> & N,
 		Eigen::VectorXi & A);
 
+	// readMESH for self collision
+	// Outputs:
+	// FF, triangle faces without duplicate.
+	template <
+		typename DerivedV,
+		typename DerivedT,
+		typename DerivedF,
+		typename DerivedC,
+		typename DerivedN>
+		IGL_INLINE bool readMESH(
+			const std::string mesh_file_name,
+			Eigen::PlainObjectBase< DerivedV > & V,
+			Eigen::PlainObjectBase< DerivedT > & T,
+			Eigen::PlainObjectBase< DerivedF > & F,
+			Eigen::PlainObjectBase< DerivedF > & SF,
+			Eigen::PlainObjectBase< DerivedC > & C,
+			Eigen::PlainObjectBase< DerivedN > & N,
+			Eigen::VectorXi & A);
+
+	template <
+		typename DerivedV,
+		typename DerivedT,
+		typename DerivedF,
+		typename DerivedC,
+		typename DerivedN>
+		IGL_INLINE bool readMESH(
+			FILE * mesh_file,
+			Eigen::PlainObjectBase< DerivedV > & V,
+			Eigen::PlainObjectBase< DerivedT > & T,
+			Eigen::PlainObjectBase< DerivedF > & F,
+			Eigen::PlainObjectBase< DerivedF > & SF,
+			Eigen::PlainObjectBase< DerivedC > & C,
+			Eigen::PlainObjectBase< DerivedN > & N,
+			Eigen::VectorXi & A);
+
 
 	// readMESH for self collision
 	// Outputs:
@@ -129,7 +165,8 @@ namespace igl
 			Eigen::PlainObjectBase<DerivedV> & V,
 			Eigen::PlainObjectBase<DerivedT> & T,
 			Eigen::PlainObjectBase<DerivedF> & F,
-			Eigen::PlainObjectBase<DerivedF> & ST,
+			Eigen::PlainObjectBase<DerivedT> & ST,
+			Eigen::PlainObjectBase<DerivedF> & SF,
 			Eigen::PlainObjectBase<DerivedC> & C,
 			Eigen::PlainObjectBase<DerivedN> & N,
 			Eigen::VectorXi & A,
@@ -146,11 +183,13 @@ namespace igl
 			Eigen::PlainObjectBase<DerivedV> & V,
 			Eigen::PlainObjectBase<DerivedT> & T,
 			Eigen::PlainObjectBase<DerivedF> & F,
-			Eigen::PlainObjectBase<DerivedF> & ST,
+			Eigen::PlainObjectBase<DerivedT> & ST,
+			Eigen::PlainObjectBase<DerivedF> & SF,
 			Eigen::PlainObjectBase<DerivedC> & C,
 			Eigen::PlainObjectBase<DerivedN> & N,
 			Eigen::VectorXi & A,
 			Eigen::VectorXi & SV);
+
 }
 
 #ifndef IGL_STATIC_LIBRARY
