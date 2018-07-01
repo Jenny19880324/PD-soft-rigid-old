@@ -857,7 +857,7 @@ int main(int argc, char *argv[])
 		  }
 		  
 
-		  if (ImGui::SliderFloat("trans", &dist, -15.0f, 15.0f)) {
+		  if (ImGui::SliderFloat("trans", &dist, -5.0f, 5.0f)) {
 			  slice_plane.center = slice_plane.normal * (double)dist;
 			  slice_plane.vertices = slice_plane.stored_vertices + (slice_plane.normal.transpose() * (double)dist).replicate(4, 1);
 			  viewer.slice_plane.set_vertices(slice_plane.vertices);

@@ -393,7 +393,7 @@ IGL_INLINE void igl::fit_hinged_rigid_motion(
 	using namespace std;
 	using namespace Eigen;
 
-	int max_iter = 1;
+	int max_iter = 10;
 	int iter = 0;
 	const int dim = 3;
 
@@ -433,6 +433,7 @@ IGL_INLINE void igl::fit_hinged_rigid_motion(
 			MatrixXd cUb = cU.block(acum_N(b_i), 0, N(b_i + 1), dim);
 			MatrixXd Ub = U.block(acum_N(b_i), 0, N(b_i + 1), dim);
 			MatrixXd Vb = V.block(acum_N(b_i), 0, N(b_i + 1), dim);
+
 			VectorXd weight = VectorXd::Ones(N(b_i + 1));
 			Matrix3d Rb;
 			RowVector3d tb;
@@ -481,12 +482,12 @@ IGL_INLINE void igl::fit_hinged_rigid_motion(
 				A.block(6 * b_i + 3, 6 * b_i + 3, 3, 3) = RbtRb;
 
 				// construct B
-				B.block(6 * b_i    , 0, 3, 1) = -2 * Qbteb.transpose();
-				B.block(6 * b_i + 3, 0, 3, 1) = 2 * Rbteb.transpose();
+				B.block(6 * b_i    , 0, 3, 1) = -Qbteb.transpose();
+				B.block(6 * b_i + 3, 0, 3, 1) = Rbteb.transpose();
 			}
 		}
 		
-		//#pragma omp parallel for
+		#pragma omp parallel for
 		for (int j_i = 0; j_i < number_of_joints; j_i++)
 		{
 			const RowVector3d p = P.row(j_i);
@@ -513,7 +514,7 @@ IGL_INLINE void igl::fit_hinged_rigid_motion(
 				Matrix3d R2_trans = R_trans.block(idx_2 * 3, 0, 3, 3);
 				Matrix3d R2 = R.block(idx_2 * 3, 0, 3, 3);
 				RowVector3d t2 = t.block(idx_2, 0, 1, 3);
-				Aeq.block(3 * constraint_idx, 6 * idx_1, 3, 3) = R1_trans * p_cross;
+				Aeq.block(3 * constraint_idx, 6 * idx_1    , 3, 3) = R1_trans * p_cross;
 				Aeq.block(3 * constraint_idx, 6 * idx_1 + 3, 3, 3) = -R1_trans;
 				Aeq.block(3 * constraint_idx, 6 * idx_2    , 3, 3) = -R2_trans * p_cross;
 				Aeq.block(3 * constraint_idx, 6 * idx_2 + 3, 3, 3) = R2_trans;
@@ -532,7 +533,7 @@ IGL_INLINE void igl::fit_hinged_rigid_motion(
 		min_quad_with_fixed_solve(solver_data, B, VectorXd(), Beq, Z);
 
 		double dist = 0.;
-		#pragma omp parallel for
+		//#pragma omp parallel for
 		for (int b_i = 0; b_i < number_of_rigid_bodies; b_i++) {
 			Vector3d wb = Z.block(b_i * 6    , 0, 3, 1);
 			Vector3d lb = Z.block(b_i * 6 + 3, 0, 3, 1);

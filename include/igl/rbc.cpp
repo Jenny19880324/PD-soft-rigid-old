@@ -425,29 +425,7 @@ IGL_INLINE bool igl::rbc_solve(
 				U = q;
 			}
 
-			if (data.energy == RBC_ENERGY_TYPE_RBC &&
-				data.bone_constraint == CONSTRAINED_BONE_CONSTRAINT) {
-				fit_hinged_rigid_motion(data.V, data.N, P, I, U);
-			}
 
-			// constraint the motion of the bone to be rigid.
-			if (data.energy == RBC_ENERGY_TYPE_RBC &&
-				(data.bone_constraint == RIGID_BONE_CONSTRAINT ||
-				 data.bone_constraint == CONSTRAINED_BONE_CONSTRAINT)) {
-				int row = 0;
-				for (int i = 1; i < data.N.size(); i++) {
-					int nb = data.N(i);
-					MatrixXd Ub = U.block(data.nf + row, 0, nb, data.dim);
-					MatrixXd Vb = data.V.block(data.nf + row, 0, nb, data.dim);
-					Eigen::Matrix3d R;
-					Eigen::RowVector3d t;
-					Eigen::VectorXd w = Eigen::VectorXd::Ones(nb, 1);
-					fit_rigid_motion(Vb, Ub, w, R, t);
-					Ub = Vb * R + t.replicate(nb, 1);
-					U.block(data.nf + row, 0, nb, data.dim) = Ub;
-					row += nb;
-				}
-			}
 			//if (data.collision_enabled) {
 			//	double floor_y = data.floor_y;
 			//	for (int i = 0; i < U0.rows(); i++) {
@@ -459,6 +437,31 @@ IGL_INLINE bool igl::rbc_solve(
 
 			iter++;
 		}
+
+		if (data.energy == RBC_ENERGY_TYPE_RBC &&
+			data.bone_constraint == CONSTRAINED_BONE_CONSTRAINT) {
+			fit_hinged_rigid_motion(data.V, data.N, P, I, U);
+		}
+
+		// constraint the motion of the bone to be rigid.
+		if (data.energy == RBC_ENERGY_TYPE_RBC &&
+			(data.bone_constraint == RIGID_BONE_CONSTRAINT ||
+				data.bone_constraint == CONSTRAINED_BONE_CONSTRAINT)) {
+			int row = 0;
+			for (int i = 1; i < data.N.size(); i++) {
+				int nb = data.N(i);
+				MatrixXd Ub = U.block(data.nf + row, 0, nb, data.dim);
+				MatrixXd Vb = data.V.block(data.nf + row, 0, nb, data.dim);
+				Eigen::Matrix3d R;
+				Eigen::RowVector3d t;
+				Eigen::VectorXd w = Eigen::VectorXd::Ones(nb, 1);
+				fit_rigid_motion(Vb, Ub, w, R, t);
+				Ub = Vb * R + t.replicate(nb, 1);
+				U.block(data.nf + row, 0, nb, data.dim) = Ub;
+				row += nb;
+			}
+		}
+
 		if (data.with_dynamics)
 		{
 			data.vel = (U - U0)/data.h;
