@@ -153,11 +153,13 @@ public:
   bool collision_enabled;
   bool self_collision_enabled;
   bool floor_enabled;
+  bool stairs_enabled;
   bool external_force_enabled;
   bool hinge_enabled;
   bool with_dynamics;
   bool output_screenshot;
   int max_iter;
+  int number_of_stairs;
   RBCEnergyType energy;
   ConstraintType constraint;
   BoneConstraintType bone_constraint;
@@ -167,6 +169,8 @@ public:
   float mass_scaling;
   float g;
   float floor_y;
+  float step_width;
+  float step_height;
   float constraint_weight;
   float collision_weight;
 
@@ -279,6 +283,10 @@ namespace igl
 	  SERIALIZE_MEMBER(collision_enabled);
 	  SERIALIZE_MEMBER(self_collision_enabled);
 	  SERIALIZE_MEMBER(floor_enabled);
+	  SERIALIZE_MEMBER(stairs_enabled);
+	  SERIALIZE_MEMBER(number_of_stairs);
+	  SERIALIZE_MEMBER(step_width);
+	  SERIALIZE_MEMBER(step_height);
 	  SERIALIZE_MEMBER(external_force_enabled);
 	  SERIALIZE_MEMBER(hinge_enabled);
 	  SERIALIZE_MEMBER(with_dynamics);

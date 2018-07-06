@@ -217,14 +217,14 @@ template <
 	}
 
 
-	if (data.collision_enabled) {
-		double floor_y = data.floor_y;
-		for (int i = 0; i < U.rows(); i++) {
-			if (U.row(i).y() < floor_y) {
-				L_triplets.push_back(Triplet<Scalar>(i, i, data.collision_weight));
-			}
-		}
-	}
+	//if (data.collision_enabled) {
+	//	double floor_y = data.floor_y;
+	//	for (int i = 0; i < U.rows(); i++) {
+	//		if (U.row(i).y() < floor_y) {
+	//			L_triplets.push_back(Triplet<Scalar>(i, i, data.collision_weight));
+	//		}
+	//	}
+	//}
 
 	L.resize(V.rows(), V.rows());
 	L.setZero();
@@ -380,17 +380,17 @@ IGL_INLINE bool igl::rbc_solve(
 				B += Dl;
 			}
 
-			if (data.collision_enabled) {
-				double floor_y = data.floor_y;
-				for (int i = 0; i < U0.rows(); i++) {
-					if (U0.row(i).y() < floor_y) {
-						double x = U0.row(i).x();
-						double y = floor_y;
-						double z = U0.row(i).z();
-						B.row(i) -= data.collision_weight * Eigen::RowVector3d(x, floor_y, z);
-					}
-				}
-			}
+			//if (data.collision_enabled) {
+			//	double floor_y = data.floor_y;
+			//	for (int i = 0; i < U0.rows(); i++) {
+			//		if (U0.row(i).y() < floor_y) {
+			//			double x = U0.row(i).x();
+			//			double y = floor_y;
+			//			double z = U0.row(i).z();
+			//			B.row(i) -= data.collision_weight * Eigen::RowVector3d(x, floor_y, z);
+			//		}
+			//	}
+			//}
 
 			if (data.constraint == SOFT_CONSTRAINT) {
 				for (int i = 0; i < data.b.rows(); i++) {

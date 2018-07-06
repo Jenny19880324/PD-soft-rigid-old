@@ -56,6 +56,7 @@ extern std::map<int, std::set<int>> neighbors;
 extern igl::RBCData rbc_data;
 extern bool gravity_enabled;
 extern bool floor_enabled;
+extern bool stairs_enabled;
 extern bool external_force_enabled;
 extern bool output_moving_constraints;
 extern bool output_screenshot;
@@ -838,6 +839,8 @@ namespace glfw
 	neighbors = data().neighbors;
 	gravity_enabled = data().gravity_enabled;
 	floor_enabled = data().floor_enabled;
+	stairs_enabled = data().stairs_enabled;
+
 	external_force_enabled = data().external_force_enabled;
 	output_screenshot = data().output_screenshot;
 	anim_t = 0.0;
@@ -854,6 +857,9 @@ namespace glfw
 	rbc_data.g = data().g;
 	rbc_data.h = data().h;
 	rbc_data.floor_y = data().floor_y;
+	rbc_data.step_height = data().step_height;
+	rbc_data.step_width = data().step_width;
+	rbc_data.number_of_stairs = data().number_of_stairs;
 	rbc_data.constraint_weight = data().constraint_weight;
 	rbc_data.collision_weight = data().collision_weight;
 	rbc_data.collision_enabled = data().collision_enabled;
@@ -898,7 +904,29 @@ namespace glfw
 		selected_data_index--;
 	}
 
+	if (stairs_enabled) {
+		Eigen::MatrixXd stairs_V(4 * rbc_data.number_of_stairs, 3);
+		Eigen::MatrixXi stairs_F(2 * rbc_data.number_of_stairs, 3);
 
+		double step_height = rbc_data.step_height;
+		double step_width = rbc_data.step_width;
+		for (int i = 0; i < rbc_data.number_of_stairs; i++) {
+			stairs_V.block(i * 4, 0, 4, 3) << -10., (double)(-i * step_height), (double)((i + 1)* step_width),
+				10., (double)(-i * step_height), (double)((i + 1) * step_width),
+				10., (double)(-i * step_height), (double)(i * step_width),
+				-10., (double)(-i * step_height), (double)(i * step_width);
+
+			stairs_F.block(i * 2, 0, 2, 3) << 0 + i * 4, 1 + i * 4, 3 + i * 4,
+				1 + i * 4, 2 + i * 4, 3 + i * 4;
+
+		}
+
+		std::cout << "stairs_V = " << stairs_V << std::endl;
+		std::cout << "stairs_F = " << stairs_F << std::endl;
+		append_mesh();
+		data().set_mesh(stairs_V, stairs_F);
+		selected_data_index--;
+	}
     return true;
   }
 
@@ -926,6 +954,7 @@ namespace glfw
 	  data().collision_enabled = rbc_data.collision_enabled;
 	  data().self_collision_enabled = rbc_data.self_collision_enabled;
 	  data().floor_enabled = floor_enabled;
+	  data().stairs_enabled = stairs_enabled;
 	  data().external_force_enabled = external_force_enabled;
 	  data().Vel = rbc_data.vel;
 	  data().with_dynamics = rbc_data.with_dynamics;
@@ -938,6 +967,9 @@ namespace glfw
 	  data().mass_scaling = rbc_data.mass_scaling;
 	  data().g = rbc_data.g;
 	  data().floor_y = rbc_data.floor_y;
+	  data().number_of_stairs = rbc_data.number_of_stairs;
+	  data().step_width = rbc_data.step_width;
+	  data().step_height = rbc_data.step_height;
 	  data().constraint_weight = rbc_data.constraint_weight;
 	  data().collision_weight = rbc_data.collision_weight;
 	  data().output_screenshot = output_screenshot;

@@ -38,6 +38,7 @@ bool vertices_move_enabled = false;
 bool vertices_rotate_enabled = false;
 bool external_force_enabled = false;
 bool floor_enabled = false;
+bool stairs_enabled = false;
 bool gravity_enabled = false;
 bool output_moving_constraints = false;
 bool output_screenshot = false;
@@ -142,6 +143,31 @@ struct FloorPlane {
 			1, 2, 3;
 	}
 } floor_plane;
+
+
+struct Stairs {
+	bool enabled = false;
+	int number_of_stairs = 10;
+	double step_width = 12;
+	double step_height = 8;
+	Eigen::MatrixXd V;
+	Eigen::MatrixXi F;
+
+	Stairs() {
+		V.resize(4 * number_of_stairs, 3);
+		F.resize(2 * number_of_stairs, 3);
+		for (int i = 0; i < number_of_stairs; i++) {
+			V.block(i * 4, 0, 4, 3) << -100., (double)(-i * step_height), (double)((i + 1)* step_width),
+				100., (double)(-i * step_height), (double)((i + 1) * step_width),
+				100., (double)(-i * step_height), (double)(i * step_width),
+				-100., (double)(-i * step_height),(double)(i * step_width);
+
+			F.block(i * 2, 0, 2, 3) << 0 + i * 4, 1 + i * 4, 3 + i * 4,
+										1 + i * 4, 2 + i * 4, 3 + i * 4;
+
+		}
+	}
+} stairs;
 
 Eigen::Quaternionf trackball_angle = Eigen::Quaternionf::Identity();
 Eigen::Quaternionf down_rotation = Eigen::Quaternionf::Identity();
@@ -666,11 +692,64 @@ bool pre_draw(igl::opengl::glfw::Viewer &viewer)
 		for (int b_i = 0; b_i < b.rows(); b_i++) {
 			b_set.insert(b(b_i));
 		}
+
+		if (rbc_data.self_collision_enabled) {
+			igl::self_collision(U, T, SF, neighbors, b_set, rbc_data);
+		}
+
+		rbc_data.f_ext = Eigen::RowVector3d(0., (double)rbc_data.g, 0.).replicate(V.rows(), 1);
+		rbc_data.f_ext = rbc_data.M * rbc_data.f_ext;
+		if (rbc_data.collision_enabled) {
+			
+			if (floor_enabled) {
+				double floor_y = rbc_data.floor_y;
+				for (int i = 0; i < U.rows(); i++) {
+					if (U.row(i).y() < floor_y) {
+						rbc_data.f_ext(i, 1) = (floor_y - U(i, 1)) * rbc_data.collision_weight;
+					}
+				}
+			}
+			
+			if (stairs_enabled) {
+				for (int i = 0; i < U.rows(); i++) {
+					if (U.row(i).z() < 0 &&
+						U.row(i).y() < 0) {
+						rbc_data.f_ext(i, 1) = 0. - U(i, 1);
+					}
+
+					for (int step_i = 1; step_i < rbc_data.number_of_stairs - 1; step_i++) {
+						if (U.row(i).z() < (step_i + 1) * rbc_data.step_width && U.row(i).z() > step_i * rbc_data.step_width &&
+							U.row(i).y() < -step_i * rbc_data.step_height) {
+							rbc_data.f_ext(i, 1) = -step_i * rbc_data.step_height - U(i, 1);
+						}
+					}
+
+					if (U.row(i).z() > (rbc_data.number_of_stairs - 1) * rbc_data.step_width &&
+						U.row(i).y() < (rbc_data.number_of_stairs - 1) * rbc_data.step_height)
+					{
+						rbc_data.f_ext(i, 1) = -(rbc_data.number_of_stairs - 1) * rbc_data.step_height - U(i, 1);
+					}
+					rbc_data.f_ext(i, 1) *= rbc_data.collision_weight; 
+				}
+			}
+		}
 		
-		igl::self_collision(U, T, SF, neighbors, b_set, rbc_data);
-
-
 		//igl::rbc_precomputation(V, U, T, N, V.cols(), colliding_b, rbc_data);
+		// debug
+		//if (anim_f == 0) {
+		//	rbc_data.vel.setZero();
+		//}
+		////if ((anim_f / 50) % 2 == 0) {
+		//	rbc_data.vel.resize(U.rows(), 3);
+		//	Eigen::RowVector3d pinpoint = bc.row(0);
+		//	Eigen::RowVector3d axis = Eigen::RowVector3d(0, 0, 1);
+		//	for (int i = 0; i < U.rows(); i++) {
+		//		Eigen::RowVector3d r = U.row(i) - pinpoint;
+		//		Eigen::RowVector3d v = r.cross(axis);
+		//		rbc_data.vel.row(i) += angular_velocity_scaling * v;
+		//	}
+		////}
+		// debug
 		igl::rbc_solve(bc, rbc_data, U);
 		viewer.data().set_vertices(U);
 		viewer.data().compute_normals();
@@ -911,7 +990,7 @@ if (ImGui::Button("clear")) {
 	  // Simulation panel
 	// Define next window position + size
 	  ImGui::SetNextWindowPos(ImVec2(180.f * menu.menu_scaling(), 0), ImGuiSetCond_FirstUseEver);
-	  ImGui::SetNextWindowSize(ImVec2(200, 480), ImGuiSetCond_FirstUseEver);
+	  ImGui::SetNextWindowSize(ImVec2(200, 500), ImGuiSetCond_FirstUseEver);
 	  ImGui::Begin(
 		  "Simulation", nullptr
 	  );
@@ -1007,6 +1086,21 @@ if (ImGui::Button("clear")) {
 		  viewer.selected_data_index--;
 	  }
 
+	  if (ImGui::Checkbox("stairs", &stairs_enabled)) {
+		  static int stairs_idx = 0;
+		  rbc_data.number_of_stairs = stairs.number_of_stairs;
+		  rbc_data.step_height = stairs.step_height;
+		  rbc_data.step_width = stairs.step_width;
+		  if (stairs_enabled) {
+			  viewer.append_mesh();
+			  stairs_idx = viewer.data_list.size() - 1;
+			  viewer.data().set_mesh(stairs.V, stairs.F);
+			  viewer.selected_data_index--;
+		  }
+		  else {
+			  viewer.erase_mesh(stairs_idx);
+		  }
+	  }
 	  // Expose the same variable directly
 	  if (ImGui::DragFloat("h", &rbc_data.h, 0.1, 0.0, 1.0)) {
 
@@ -1060,7 +1154,20 @@ if (ImGui::Button("clear")) {
 	  }
 	  ImGui::PopItemWidth();
 	  if (ImGui::Button("Apply Angular Momemtum")) {
-		  if (bc.rows() < 1) {
+		  //debug
+		  rbc_data.with_dynamics = true;
+		  igl::rbc_precomputation(V, T, N, V.cols(), b, rbc_data);
+		  rbc_data.vel.resize(U.rows(), 3);
+		  Eigen::RowVector3d pinpoint = Eigen::RowVector3d(0., 2.0, 0.);
+		  Eigen::RowVector3d axis = Eigen::RowVector3d(1, 0, 0);
+		  for (int i = 0; i < U.rows(); i++) {
+			  //if (U(i, 1) < 2.0) continue;
+			  Eigen::RowVector3d r = U.row(i) - pinpoint;
+			  Eigen::RowVector3d v = r.cross(axis);
+			  rbc_data.vel.row(i) = angular_velocity_scaling * v;
+		  }
+		  //debug
+		  /*if (bc.rows() < 1) {
 			  std::cout << "Please select one vertex as the pinpoint.";
 		  }
 		  else {
@@ -1074,7 +1181,7 @@ if (ImGui::Button("clear")) {
 				  Eigen::RowVector3d v = r.cross(axis);
 				  rbc_data.vel.row(i) = angular_velocity_scaling * v;
 			  }
-		  }
+		  }*/
 
 	  }
 	  if (ImGui::Button("Output Moving Constraint")) {
@@ -1135,7 +1242,7 @@ if (ImGui::Button("clear")) {
 	  ImGui::End();
 
 	  // Mesh panel
-	  ImGui::SetNextWindowPos(ImVec2(180.f * menu.menu_scaling(), 480), ImGuiSetCond_FirstUseEver);
+	  ImGui::SetNextWindowPos(ImVec2(180.f * menu.menu_scaling(), 500), ImGuiSetCond_FirstUseEver);
 	  ImGui::SetNextWindowSize(ImVec2(200, 80), ImGuiSetCond_FirstUseEver);
 	  ImGui::Begin(
 		  "Mesh", nullptr
@@ -1146,7 +1253,7 @@ if (ImGui::Button("clear")) {
 	  ImGui::End();
 
 	  // Output panel
-	  ImGui::SetNextWindowPos(ImVec2(180.f * menu.menu_scaling(), 560), ImGuiSetCond_FirstUseEver);
+	  ImGui::SetNextWindowPos(ImVec2(180.f * menu.menu_scaling(), 580), ImGuiSetCond_FirstUseEver);
 	  ImGui::SetNextWindowSize(ImVec2(200, 80), ImGuiSetCond_FirstUseEver);
 	  ImGui::Begin(
 		  "Output", nullptr

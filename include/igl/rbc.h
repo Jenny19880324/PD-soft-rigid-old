@@ -40,6 +40,7 @@ namespace igl
 		// I list of rigid body index involved in joint constraint 
 		// P joint constraint position
 		int n, nf, nb, m;
+		int number_of_stairs;
 		Eigen::VectorXi G;
 		Eigen::MatrixXi F;
 		RBCEnergyType energy;
@@ -54,6 +55,8 @@ namespace igl
 		float mass_scaling;
 		float g;
 		float floor_y;
+		float step_width;
+		float step_height;
 		float constraint_weight;
 		float collision_weight;
 		int max_iter;
