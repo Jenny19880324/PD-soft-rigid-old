@@ -278,14 +278,16 @@ template<
 		std::cout << "propagation" << std::endl;
 	}
 
-	data.f_ext.resize(V.rows(), 3);
-	data.f_ext.setZero();
+	//data.f_ext.resize(V.rows(), 3);
+	//data.f_ext.setZero();
+
+		std::cout << "data.self_collision_weight = " << data.self_collision_weight << std::endl;
 	for (int v_i = 0; v_i < V.rows(); v_i++) {
 		if (penetration_depth.find(v_i) != penetration_depth.end()){
-			data.f_ext.row(v_i) = data.collision_weight * penetration_depth.at(v_i) * (penetration_direction.at(v_i).transpose());
+			data.f_ext.row(v_i) += data.self_collision_weight * penetration_depth.at(v_i) * (penetration_direction.at(v_i).transpose());
 		}
 	}
-	data.f_ext += data.M * (Eigen::RowVector3d(0., (double)data.g, 0.).replicate(V.rows(), 1));
+	//data.f_ext += data.M * (Eigen::RowVector3d(0., (double)data.g, 0.).replicate(V.rows(), 1));
  	return !penetration_depth.empty();
 }
 

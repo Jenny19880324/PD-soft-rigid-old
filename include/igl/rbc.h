@@ -59,6 +59,7 @@ namespace igl
 		float step_height;
 		float constraint_weight;
 		float collision_weight;
+		float self_collision_weight;
 		int max_iter;
 		Eigen::SparseMatrix<double> J, M;
 		Eigen::SparseMatrix<double> L;
@@ -88,6 +89,7 @@ namespace igl
 		g(-9.8),
 		constraint_weight(50.0),
 		collision_weight(1.0),
+		self_collision_weight(1.0),
 		max_iter(10),
 		J(),
 		L(),

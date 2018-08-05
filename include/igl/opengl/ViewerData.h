@@ -173,6 +173,7 @@ public:
   float step_height;
   float constraint_weight;
   float collision_weight;
+  float self_collision_weight;
 
   // Per face attributes
   Eigen::MatrixXd F_normals; // One normal per face
@@ -304,6 +305,7 @@ namespace igl
 	  SERIALIZE_MEMBER(floor_y);
 	  SERIALIZE_MEMBER(constraint_weight);
 	  SERIALIZE_MEMBER(collision_weight);
+	  SERIALIZE_MEMBER(self_collision_weight);
       SERIALIZE_MEMBER(F_normals);
       SERIALIZE_MEMBER(F_material_ambient);
       SERIALIZE_MEMBER(F_material_diffuse);

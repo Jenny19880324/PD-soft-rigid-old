@@ -862,6 +862,7 @@ namespace glfw
 	rbc_data.number_of_stairs = data().number_of_stairs;
 	rbc_data.constraint_weight = data().constraint_weight;
 	rbc_data.collision_weight = data().collision_weight;
+	rbc_data.self_collision_weight = data().self_collision_weight;
 	rbc_data.collision_enabled = data().collision_enabled;
 	rbc_data.self_collision_enabled = data().self_collision_enabled;
 
@@ -972,6 +973,7 @@ namespace glfw
 	  data().step_height = rbc_data.step_height;
 	  data().constraint_weight = rbc_data.constraint_weight;
 	  data().collision_weight = rbc_data.collision_weight;
+	  data().self_collision_weight = rbc_data.self_collision_weight;
 	  data().output_screenshot = output_screenshot;
 
 	  if (!output_moving_constraints) {

@@ -98,7 +98,7 @@ IGL_INLINE bool igl::rbc_precomputation(
 		//data.f_ext = MatrixXd::Zero(n, data.dim);
 		data.f_ext = Eigen::RowVector3d(0.,(double)data.g, 0.).replicate(V.rows(), 1);
 		data.f_ext = data.M * data.f_ext;
-		if (data.vel.rows() == 0) {
+		if (data.vel.rows() == 0 || data.vel.rows() != n) {
 			data.vel = MatrixXd::Zero(n, data.dim);
 		}
 	}

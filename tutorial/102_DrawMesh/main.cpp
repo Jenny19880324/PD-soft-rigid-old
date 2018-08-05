@@ -148,8 +148,10 @@ struct FloorPlane {
 struct Stairs {
 	bool enabled = false;
 	int number_of_stairs = 10;
-	double step_width = 12;
-	double step_height = 8;
+	double step_width = 1.5;
+	double step_height = 1.0;
+	double start_height = 0.0;
+	double start_width = 2.0;
 	Eigen::MatrixXd V;
 	Eigen::MatrixXi F;
 
@@ -157,10 +159,10 @@ struct Stairs {
 		V.resize(4 * number_of_stairs, 3);
 		F.resize(2 * number_of_stairs, 3);
 		for (int i = 0; i < number_of_stairs; i++) {
-			V.block(i * 4, 0, 4, 3) << -100., (double)(-i * step_height), (double)((i + 1)* step_width),
-				100., (double)(-i * step_height), (double)((i + 1) * step_width),
-				100., (double)(-i * step_height), (double)(i * step_width),
-				-100., (double)(-i * step_height),(double)(i * step_width);
+			V.block(i * 4, 0, 4, 3) << -10., (double)(-i * step_height - start_height), (double)((i + 1)* step_width - start_width),
+				10., (double)(-i * step_height - start_height), (double)((i + 1) * step_width - start_width),
+				10., (double)(-i * step_height - start_height), (double)(i * step_width - start_width),
+				-10., (double)(-i * step_height - start_height),(double)(i * step_width - start_width);
 
 			F.block(i * 2, 0, 2, 3) << 0 + i * 4, 1 + i * 4, 3 + i * 4,
 										1 + i * 4, 2 + i * 4, 3 + i * 4;
@@ -685,16 +687,12 @@ bool pre_draw(igl::opengl::glfw::Viewer &viewer)
 
 			bc.block(0, 0, bc_ith_frame.rows(), 3) << bc_ith_frame;
 			// green means b is precomputed, it's not temp_b anymore.
-			viewer.data().move_points(bc_ith_frame, Eigen::RowVector3d(0.0, 1.0, 0.0), 0);
+			viewer.data().move_points(bc_ith_frame, Eigen::RowVector3d(0.0, 1.0, 0.0), b.rows() - b_ith_frame.rows());
 		}
 
 		std::set<int> b_set;
 		for (int b_i = 0; b_i < b.rows(); b_i++) {
 			b_set.insert(b(b_i));
-		}
-
-		if (rbc_data.self_collision_enabled) {
-			igl::self_collision(U, T, SF, neighbors, b_set, rbc_data);
 		}
 
 		rbc_data.f_ext = Eigen::RowVector3d(0., (double)rbc_data.g, 0.).replicate(V.rows(), 1);
@@ -712,43 +710,64 @@ bool pre_draw(igl::opengl::glfw::Viewer &viewer)
 			
 			if (stairs_enabled) {
 				for (int i = 0; i < U.rows(); i++) {
-					if (U.row(i).z() < 0 &&
-						U.row(i).y() < 0) {
-						rbc_data.f_ext(i, 1) = 0. - U(i, 1);
-					}
+					//if (U.row(i).z() < 0 &&
+					//	U.row(i).y() < 0) {
+					//	rbc_data.f_ext(i, 1) = 0. - U(i, 1);
+					//}
 
-					for (int step_i = 1; step_i < rbc_data.number_of_stairs - 1; step_i++) {
-						if (U.row(i).z() < (step_i + 1) * rbc_data.step_width && U.row(i).z() > step_i * rbc_data.step_width &&
-							U.row(i).y() < -step_i * rbc_data.step_height) {
-							rbc_data.f_ext(i, 1) = -step_i * rbc_data.step_height - U(i, 1);
+					for (int step_i = 0; step_i < rbc_data.number_of_stairs; step_i++) {
+						if (U.row(i).z() < (step_i + 1.0) * rbc_data.step_width - stairs.start_width &&
+							U.row(i).z() > step_i * rbc_data.step_width - stairs.start_width)
+						{
+							if (U.row(i).y() < -step_i * rbc_data.step_height - stairs.start_height && 
+								U.row(i).y() > -(step_i + 0.5) * rbc_data.step_height - stairs.start_height) {
+								rbc_data.f_ext(i, 1) = -step_i * rbc_data.step_height - stairs.start_height - U(i, 1);
+							}
+							else if (U.row(i).y() < -(step_i + 0.5) * rbc_data.step_height - stairs.start_height &&
+								U.row(i).y() > -(step_i + 1.0) * rbc_data.step_height - stairs.start_height) {
+								rbc_data.f_ext(i, 2) = U(i, 2) - step_i * rbc_data.step_width + stairs.start_width;
+							}
 						}
 					}
 
-					if (U.row(i).z() > (rbc_data.number_of_stairs - 1) * rbc_data.step_width &&
-						U.row(i).y() < (rbc_data.number_of_stairs - 1) * rbc_data.step_height)
-					{
-						rbc_data.f_ext(i, 1) = -(rbc_data.number_of_stairs - 1) * rbc_data.step_height - U(i, 1);
-					}
+					//if (U.row(i).z() > (rbc_data.number_of_stairs - 1) * rbc_data.step_width &&
+					//	U.row(i).y() < (rbc_data.number_of_stairs - 1) * rbc_data.step_height)
+					//{
+					//	rbc_data.f_ext(i, 1) = -(rbc_data.number_of_stairs - 1) * rbc_data.step_height - U(i, 1);
+					//}
 					rbc_data.f_ext(i, 1) *= rbc_data.collision_weight; 
 				}
 			}
 		}
 		
+		if (rbc_data.self_collision_enabled) {
+			igl::self_collision(U, T, SF, neighbors, b_set, rbc_data);
+		}
+
 		//igl::rbc_precomputation(V, U, T, N, V.cols(), colliding_b, rbc_data);
-		// debug
-		//if (anim_f == 0) {
-		//	rbc_data.vel.setZero();
-		//}
-		////if ((anim_f / 50) % 2 == 0) {
-		//	rbc_data.vel.resize(U.rows(), 3);
-		//	Eigen::RowVector3d pinpoint = bc.row(0);
-		//	Eigen::RowVector3d axis = Eigen::RowVector3d(0, 0, 1);
-		//	for (int i = 0; i < U.rows(); i++) {
-		//		Eigen::RowVector3d r = U.row(i) - pinpoint;
-		//		Eigen::RowVector3d v = r.cross(axis);
-		//		rbc_data.vel.row(i) += angular_velocity_scaling * v;
-		//	}
-		////}
+		// debug: add angular velocity constantly
+		if (anim_f == 0) {
+			rbc_data.vel.setZero();
+		}
+		if ((anim_f / 10) % 2 == 0) {
+			rbc_data.vel.resize(U.rows(), 3);
+			//Eigen::RowVector3d pinpoint = bc.row(0);
+
+			Eigen::RowVector3d cm = Eigen::RowVector3d::Zero(); // center of selected vertices
+			for (int i = 0; i < U.rows(); i++)
+			{
+				cm += U.row(i);
+			}
+			cm /= U.rows();
+			Eigen::RowVector3d pinpoint = cm;
+
+			Eigen::RowVector3d axis = Eigen::RowVector3d(-1, 0, 0);
+			for (int i = 0; i < U.rows(); i++) {
+				Eigen::RowVector3d r = U.row(i) - pinpoint;
+				Eigen::RowVector3d v = r.cross(axis);
+				rbc_data.vel.row(i) += angular_velocity_scaling * v;
+			}
+		}
 		// debug
 		igl::rbc_solve(bc, rbc_data, U);
 		viewer.data().set_vertices(U);
@@ -990,7 +1009,7 @@ if (ImGui::Button("clear")) {
 	  // Simulation panel
 	// Define next window position + size
 	  ImGui::SetNextWindowPos(ImVec2(180.f * menu.menu_scaling(), 0), ImGuiSetCond_FirstUseEver);
-	  ImGui::SetNextWindowSize(ImVec2(200, 500), ImGuiSetCond_FirstUseEver);
+	  ImGui::SetNextWindowSize(ImVec2(200, 520), ImGuiSetCond_FirstUseEver);
 	  ImGui::Begin(
 		  "Simulation", nullptr
 	  );
@@ -1147,6 +1166,9 @@ if (ImGui::Button("clear")) {
 	  if (ImGui::DragFloat("collision weight", &rbc_data.collision_weight, 1.0, 0.0, 100.0))
 	  {
 	  }
+	  if (ImGui::DragFloat("self collision weight", &rbc_data.self_collision_weight, 0.1, 0.0, 100.0))
+	  {
+	  }
 
 	  if (ImGui::Combo("Bone Constraint", (int *)(&rbc_data.bone_constraint), "affine\0rigid\0constrained\0")) {
 	  }
@@ -1158,8 +1180,8 @@ if (ImGui::Button("clear")) {
 		  rbc_data.with_dynamics = true;
 		  igl::rbc_precomputation(V, T, N, V.cols(), b, rbc_data);
 		  rbc_data.vel.resize(U.rows(), 3);
-		  Eigen::RowVector3d pinpoint = Eigen::RowVector3d(0., 2.0, 0.);
-		  Eigen::RowVector3d axis = Eigen::RowVector3d(1, 0, 0);
+		  Eigen::RowVector3d pinpoint = Eigen::RowVector3d(0., 0.0, 0.);
+		  Eigen::RowVector3d axis = Eigen::RowVector3d(-1, 0, 0);
 		  for (int i = 0; i < U.rows(); i++) {
 			  //if (U(i, 1) < 2.0) continue;
 			  Eigen::RowVector3d r = U.row(i) - pinpoint;
@@ -1191,6 +1213,8 @@ if (ImGui::Button("clear")) {
 			  std::cerr << "select vertices first" << std::endl;
 		  }
 		  else {
+			  viewer.data().b.clear();
+			  viewer.data().bc.clear();
 			  Eigen::RowVector3d cm = Eigen::RowVector3d::Zero(); // center of selected vertices
 			  for (int i = 0; i < temp_bc.rows(); i++)
 			  {
@@ -1198,25 +1222,39 @@ if (ImGui::Button("clear")) {
 			  }
 			  cm /= temp_bc.rows();
 
-			  int number_of_frames = 100;
+			  int number_of_frames = 200;
 			  Eigen::RowVector3d t;
 			  Eigen::Matrix3d R;
 			  for (int i = 0; i < number_of_frames; i++)
 			  {
-				  double alpha = M_PI / 2 * (double)i / (double)number_of_frames;
-				  double beta = M_PI * (double)i / (double)number_of_frames;
-				  t.x() = 12. * (cos(alpha) - 1.);
-				  t.y() = 12. * sin(alpha);
-				  t.z() = 0.;
+				  // U shape movement
+				  //double alpha = M_PI / 2 * (double)i / (double)number_of_frames;
+				  //double beta = M_PI * (double)i / (double)number_of_frames;
+				  //t.x() = 2. * (cos(alpha) - 1.);
+				  //t.y() = 2. * sin(alpha);
+				  //t.z() = 0.;
 
-				  R = igl::rotation_matrix_from_axis_and_angle(
-					  Eigen::Vector3d(0., 0., 1.),
-					  beta);
+				  //R = igl::rotation_matrix_from_axis_and_angle(
+					 // Eigen::Vector3d(0., 0., 1.),
+					 // beta);
+				  //Eigen::MatrixXd bc_ith_frame(temp_bc.rows(), temp_bc.cols());
+				  //for (int j = 0; j < temp_bc.rows(); j++) {
+					 // Eigen::RowVector3d delta = temp_bc.row(j) - cm;
+					 // bc_ith_frame.row(j) = delta * R.transpose() + cm + t;
+				  //}
+				  // U shape movement
+
+				  // updown shake movement
+				  double alpha = M_PI * 16 * (double)i / (double)number_of_frames;
+				  t.x() = 0.5 * sin(alpha);
+				  t.y() = 0.;
+				  t.z() = 0.;
 				  Eigen::MatrixXd bc_ith_frame(temp_bc.rows(), temp_bc.cols());
 				  for (int j = 0; j < temp_bc.rows(); j++) {
-					  Eigen::RowVector3d delta = temp_bc.row(j) - cm;
-					  bc_ith_frame.row(j) = delta * R.transpose() + cm + t;
+					  bc_ith_frame.row(j) = temp_bc.row(j) + t;
 				  }
+				  // updown shake movement
+
 				  viewer.data().b.push_back(temp_b);
 				  viewer.data().bc.push_back(bc_ith_frame);
 			  }
@@ -1229,10 +1267,16 @@ if (ImGui::Button("clear")) {
 			  viewer.data().b.push_back(temp_b);
 			  viewer.data().bc.push_back(bc_first_frame);*/
 
+			  Eigen::VectorXi fixed_b = b;
+			  Eigen::MatrixX3d fixed_bc = bc;
 			  b.conservativeResize(b.rows() + b_first_frame.rows());
-			  b.block(b.rows() - b_first_frame.rows(), 0, b_first_frame.rows(), 1) << b_first_frame;
+			  b << b_first_frame,
+				  fixed_b;
+			  //b.block(b.rows() - b_first_frame.rows(), 0, b_first_frame.rows(), 1) << b_first_frame;
 			  bc.conservativeResize(bc.rows() + bc_first_frame.rows(), Eigen::NoChange);
-			  bc.block(bc.rows() - bc_first_frame.rows(), 0, bc_first_frame.rows(), 3) << bc_first_frame;
+			  bc << bc_first_frame,
+				  fixed_bc;
+			  //bc.block(bc.rows() - bc_first_frame.rows(), 0, bc_first_frame.rows(), 3) << bc_first_frame;
 			  temp_b.resize(0);
 			  temp_bc.resize(0, Eigen::NoChange);
 			  igl::rbc_precomputation(V, T, N, V.cols(), b, rbc_data);
@@ -1242,7 +1286,7 @@ if (ImGui::Button("clear")) {
 	  ImGui::End();
 
 	  // Mesh panel
-	  ImGui::SetNextWindowPos(ImVec2(180.f * menu.menu_scaling(), 500), ImGuiSetCond_FirstUseEver);
+	  ImGui::SetNextWindowPos(ImVec2(180.f * menu.menu_scaling(), 520), ImGuiSetCond_FirstUseEver);
 	  ImGui::SetNextWindowSize(ImVec2(200, 80), ImGuiSetCond_FirstUseEver);
 	  ImGui::Begin(
 		  "Mesh", nullptr
@@ -1253,7 +1297,7 @@ if (ImGui::Button("clear")) {
 	  ImGui::End();
 
 	  // Output panel
-	  ImGui::SetNextWindowPos(ImVec2(180.f * menu.menu_scaling(), 580), ImGuiSetCond_FirstUseEver);
+	  ImGui::SetNextWindowPos(ImVec2(180.f * menu.menu_scaling(), 600), ImGuiSetCond_FirstUseEver);
 	  ImGui::SetNextWindowSize(ImVec2(200, 80), ImGuiSetCond_FirstUseEver);
 	  ImGui::Begin(
 		  "Output", nullptr
