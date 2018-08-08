@@ -8,7 +8,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 #include "ImGuiMenu.h"
 #include <igl/readMESH.h>
+#include <igl/readOBJ.h>
 #include <igl/writeMESH.h>
+#include <igl/writeOBJ.h>
 #include <igl/readJOINT.h>
 #include <igl/project.h>
 #include <igl/self_collision.h>
@@ -25,6 +27,10 @@ extern Eigen::VectorXi N, A;
 extern std::vector<std::vector<int>> I;
 extern std::map<int, std::set<int>> neighbors;
 extern double s_grid;
+
+extern Eigen::MatrixXd output_obj_TC;
+extern Eigen::MatrixXi output_obj_F;
+extern Eigen::MatrixXi output_obj_FTC;
 
 namespace igl
 {
@@ -109,6 +115,55 @@ IGL_INLINE bool ImGuiMenu::load(std::string filename)
 		}
 		std::cout << P << std::endl;
 		return true;
+	}
+	else if (ext == "obj") {
+		std::vector<std::vector<double>> obj_V;
+		std::vector<std::vector<double>> TC;
+		std::vector<std::vector<double>> N;
+		std::vector<std::vector<int>> obj_F;
+		std::vector<std::vector<int>> FTC;
+		std::vector<std::vector<int>> FN;
+
+		igl::readOBJ(filename, obj_V, TC, N, obj_F, FTC, FN);
+
+		std::unordered_map<int, int> obj2mesh;
+
+		for (int obj_v_i = 0; obj_v_i < obj_V.size(); obj_v_i++) {
+			bool found = false;
+			for (int v_i = 0; v_i < V.rows(); v_i++) {
+				if (obj_V[obj_v_i][0] > V(v_i, 0) - 1e-2 && obj_V[obj_v_i][0] < V(v_i, 0) + 1e-2 && 
+					obj_V[obj_v_i][1] > V(v_i, 1) - 1e-2 && obj_V[obj_v_i][1] < V(v_i, 1) + 1e-2 &&
+					obj_V[obj_v_i][2] > V(v_i, 2) - 1e-2 && obj_V[obj_v_i][2] < V(v_i, 2) + 1e-2) {
+					obj2mesh[obj_v_i] = v_i;
+					found = true;
+					break;
+				}
+			}
+			assert(found == true);
+		}
+
+		assert(obj2mesh.size() == obj_V.size());
+		assert(FTC.size() == obj_F.size());
+
+		output_obj_TC.resize(TC.size(), 2);
+		for (int t_i = 0; t_i < TC.size(); t_i++) {
+			output_obj_TC(t_i, 0) = TC[t_i][0];
+			output_obj_TC(t_i, 1) = TC[t_i][1];
+		}
+
+		output_obj_FTC.resize(FTC.size(), 3);
+		output_obj_F.resize(obj_F.size(), 3);
+		for (int f_i = 0; f_i < obj_F.size(); f_i++) {
+			for (int j = 0; j < 3; j++) {
+				output_obj_F(f_i, j) = obj2mesh[obj_F[f_i][j]];
+				if (FTC[f_i].size() == 0) {
+					output_obj_FTC(f_i, j) = 0; // in case there's a face with no texture coordinates
+				}
+				else {
+					output_obj_FTC(f_i, j) = FTC[f_i][j];
+				}
+			}	
+		}
 	}
 	return false;
 }

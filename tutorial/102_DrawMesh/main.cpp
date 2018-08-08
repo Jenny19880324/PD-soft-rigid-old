@@ -27,6 +27,7 @@
 #include <unordered_map>
 #include <igl/fit_hinged_rigid_motion.h>
 #include <igl/png/writePNG.h>
+#include <igl/writeOBJ.h>
 #include <igl/self_collision.h>
 #include <igl/spatial_hash.h>
 
@@ -42,6 +43,7 @@ bool stairs_enabled = false;
 bool gravity_enabled = false;
 bool output_moving_constraints = false;
 bool output_screenshot = false;
+bool output_obj = false;
 
 Eigen::VectorXi temp_b;
 Eigen::MatrixXd temp_U;
@@ -60,6 +62,10 @@ Eigen::VectorXi b;
 Eigen::VectorXi N, A;
 std::vector<std::vector<int>> I;
 std::map<int, std::set<int>> neighbors;
+
+Eigen::MatrixXd output_obj_TC;
+Eigen::MatrixXi output_obj_F;
+Eigen::MatrixXi output_obj_FTC;
 
 int pressed_b;
 int anim_f = 0;
@@ -791,6 +797,22 @@ bool pre_draw(igl::opengl::glfw::Viewer &viewer)
 			const char *fname = filename.c_str();
 			igl::png::writePNG(pngR, pngG, pngB, pngA, filename);
 		}
+
+		//obs sequence
+		if (output_obj) {
+			std::string filename = TUTORIAL_SHARED_PATH + std::string("/../obj/") + std::to_string(anim_f) + ".obj";
+			std::cout << "obj filename  = " << filename << std::endl;
+			if (output_obj_F.rows() == 0) {
+				igl::writeOBJ(filename, U, SF);
+			}
+			else {
+				igl::writeOBJ(filename, U, output_obj_F,
+					Eigen::MatrixXd(),
+					Eigen::MatrixXd(),
+					output_obj_TC,
+					output_obj_FTC);
+			}	
+		}
 		anim_t += anim_t_dir;
 		anim_f++;
 	}
@@ -1304,6 +1326,9 @@ if (ImGui::Button("clear")) {
 	  );
 
 	  if (ImGui::Checkbox("screenshot", &output_screenshot)) {
+
+	  }
+	  if (ImGui::Checkbox("obj", &output_obj)) {
 
 	  }
 	  ImGui::End(); 
