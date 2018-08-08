@@ -171,6 +171,8 @@ public:
   float floor_y;
   float step_width;
   float step_height;
+  float start_height;
+  float start_width;
   float constraint_weight;
   float collision_weight;
   float self_collision_weight;
@@ -288,6 +290,8 @@ namespace igl
 	  SERIALIZE_MEMBER(number_of_stairs);
 	  SERIALIZE_MEMBER(step_width);
 	  SERIALIZE_MEMBER(step_height);
+	  SERIALIZE_MEMBER(start_height);
+	  SERIALIZE_MEMBER(start_width);
 	  SERIALIZE_MEMBER(external_force_enabled);
 	  SERIALIZE_MEMBER(hinge_enabled);
 	  SERIALIZE_MEMBER(with_dynamics);

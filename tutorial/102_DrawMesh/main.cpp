@@ -151,31 +151,7 @@ struct FloorPlane {
 } floor_plane;
 
 
-struct Stairs {
-	bool enabled = false;
-	int number_of_stairs = 10;
-	double step_width = 1.5;
-	double step_height = 1.0;
-	double start_height = 0.0;
-	double start_width = 2.0;
-	Eigen::MatrixXd V;
-	Eigen::MatrixXi F;
-
-	Stairs() {
-		V.resize(4 * number_of_stairs, 3);
-		F.resize(2 * number_of_stairs, 3);
-		for (int i = 0; i < number_of_stairs; i++) {
-			V.block(i * 4, 0, 4, 3) << -10., (double)(-i * step_height - start_height), (double)((i + 1)* step_width - start_width),
-				10., (double)(-i * step_height - start_height), (double)((i + 1) * step_width - start_width),
-				10., (double)(-i * step_height - start_height), (double)(i * step_width - start_width),
-				-10., (double)(-i * step_height - start_height),(double)(i * step_width - start_width);
-
-			F.block(i * 2, 0, 2, 3) << 0 + i * 4, 1 + i * 4, 3 + i * 4,
-										1 + i * 4, 2 + i * 4, 3 + i * 4;
-
-		}
-	}
-} stairs;
+struct igl::Stairs stairs;
 
 Eigen::Quaternionf trackball_angle = Eigen::Quaternionf::Identity();
 Eigen::Quaternionf down_rotation = Eigen::Quaternionf::Identity();
@@ -1129,18 +1105,19 @@ if (ImGui::Button("clear")) {
 	  }
 
 	  if (ImGui::Checkbox("stairs", &stairs_enabled)) {
-		  static int stairs_idx = 0;
 		  rbc_data.number_of_stairs = stairs.number_of_stairs;
 		  rbc_data.step_height = stairs.step_height;
 		  rbc_data.step_width = stairs.step_width;
+		  rbc_data.start_height = stairs.start_height;
+		  rbc_data.start_width = stairs.start_width;
 		  if (stairs_enabled) {
 			  viewer.append_mesh();
-			  stairs_idx = viewer.data_list.size() - 1;
+			  stairs.idx = viewer.data_list.size() - 1;
 			  viewer.data().set_mesh(stairs.V, stairs.F);
 			  viewer.selected_data_index--;
 		  }
 		  else {
-			  viewer.erase_mesh(stairs_idx);
+			  viewer.erase_mesh(stairs.idx);
 		  }
 	  }
 	  // Expose the same variable directly

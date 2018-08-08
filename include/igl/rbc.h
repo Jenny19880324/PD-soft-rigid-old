@@ -57,6 +57,8 @@ namespace igl
 		float floor_y;
 		float step_width;
 		float step_height;
+		float start_width;
+		float start_height;
 		float constraint_weight;
 		float collision_weight;
 		float self_collision_weight;

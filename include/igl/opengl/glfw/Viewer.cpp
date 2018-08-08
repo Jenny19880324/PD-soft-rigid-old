@@ -63,6 +63,7 @@ extern bool output_screenshot;
 extern int anim_f;
 extern double anim_t;
 extern double s_grid;
+extern struct igl::Stairs stairs;
 
 // Internal global variables used for glfw event handling
 static igl::opengl::glfw::Viewer * __viewer;
@@ -861,6 +862,8 @@ namespace glfw
 	rbc_data.floor_y = data().floor_y;
 	rbc_data.step_height = data().step_height;
 	rbc_data.step_width = data().step_width;
+	rbc_data.start_height = data().start_height;
+	rbc_data.start_width = data().start_width;
 	rbc_data.number_of_stairs = data().number_of_stairs;
 	rbc_data.constraint_weight = data().constraint_weight;
 	rbc_data.collision_weight = data().collision_weight;
@@ -908,26 +911,17 @@ namespace glfw
 	}
 
 	if (stairs_enabled) {
-		Eigen::MatrixXd stairs_V(4 * rbc_data.number_of_stairs, 3);
-		Eigen::MatrixXi stairs_F(2 * rbc_data.number_of_stairs, 3);
+		stairs.enabled = true;
+		stairs.number_of_stairs = rbc_data.number_of_stairs;
+		stairs.step_width = rbc_data.step_width;
+		stairs.step_height = rbc_data.step_height;
+		stairs.start_height = rbc_data.start_height;
+		stairs.start_width = rbc_data.start_width;
+		stairs.updateMesh();
 
-		double step_height = rbc_data.step_height;
-		double step_width = rbc_data.step_width;
-		for (int i = 0; i < rbc_data.number_of_stairs; i++) {
-			stairs_V.block(i * 4, 0, 4, 3) << -10., (double)(-i * step_height), (double)((i + 1)* step_width),
-				10., (double)(-i * step_height), (double)((i + 1) * step_width),
-				10., (double)(-i * step_height), (double)(i * step_width),
-				-10., (double)(-i * step_height), (double)(i * step_width);
-
-			stairs_F.block(i * 2, 0, 2, 3) << 0 + i * 4, 1 + i * 4, 3 + i * 4,
-				1 + i * 4, 2 + i * 4, 3 + i * 4;
-
-		}
-
-		std::cout << "stairs_V = " << stairs_V << std::endl;
-		std::cout << "stairs_F = " << stairs_F << std::endl;
 		append_mesh();
-		data().set_mesh(stairs_V, stairs_F);
+		stairs.idx = data_list.size() - 1;
+		data().set_mesh(stairs.V, stairs.F);
 		selected_data_index--;
 	}
     return true;
