@@ -732,6 +732,7 @@ bool pre_draw(igl::opengl::glfw::Viewer &viewer)
 							else if (U.row(i).y() < -(step_i + 0.5) * rbc_data.step_height - stairs.start_height &&
 								U.row(i).y() > -(step_i + 1.0) * rbc_data.step_height - stairs.start_height) {
 								rbc_data.f_ext(i, 2) = U(i, 2) - step_i * rbc_data.step_width + stairs.start_width;
+								rbc_data.f_ext(i, 2) *= 0.1;
 							}
 						}
 					}

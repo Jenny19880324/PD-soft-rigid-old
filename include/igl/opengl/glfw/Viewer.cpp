@@ -401,11 +401,12 @@ namespace glfw
     }
 
     // Create new data slot and set to selected
-    if(!(data().F.rows() == 0  && data().V.rows() == 0))
-    {
-      append_mesh();
-    }
-    data().clear();
+	// comment it out because we don't want a new slot created when load texture obj
+    //if(!(data().F.rows() == 0  && data().V.rows() == 0))
+    //{
+    //  append_mesh();
+    //}
+    //data().clear();
 
     size_t last_dot = mesh_file_name_string.rfind('.');
     if (last_dot == std::string::npos)
@@ -427,24 +428,25 @@ namespace glfw
     }
     else if (extension == "obj" || extension =="OBJ")
     {
-      Eigen::MatrixXd corner_normals;
-      Eigen::MatrixXi fNormIndices;
+	  // comment out because .obj only loaded for textures
+      //Eigen::MatrixXd corner_normals;
+      //Eigen::MatrixXi fNormIndices;
 
-      Eigen::MatrixXd UV_V;
-      Eigen::MatrixXi UV_F;
-      Eigen::MatrixXd V;
-      Eigen::MatrixXi F;
+      //Eigen::MatrixXd UV_V;
+      //Eigen::MatrixXi UV_F;
+      //Eigen::MatrixXd V;
+      //Eigen::MatrixXi F;
 
-      if (!(
-            igl::readOBJ(
-              mesh_file_name_string,
-              V, UV_V, corner_normals, F, UV_F, fNormIndices)))
-      {
-        return false;
-      }
+      //if (!(
+      //      igl::readOBJ(
+      //        mesh_file_name_string,
+      //        V, UV_V, corner_normals, F, UV_F, fNormIndices)))
+      //{
+      //  return false;
+      //}
 
-      data().set_mesh(V,F);
-      data().set_uv(UV_V,UV_F);
+      //data().set_mesh(V,F);
+      //data().set_uv(UV_V,UV_F);
 
     }
     else
