@@ -60,6 +60,7 @@ extern bool stairs_enabled;
 extern bool external_force_enabled;
 extern bool output_moving_constraints;
 extern bool output_screenshot;
+extern bool output_obj;
 extern int anim_f;
 extern double anim_t;
 extern double s_grid;
@@ -846,6 +847,7 @@ namespace glfw
 
 	external_force_enabled = data().external_force_enabled;
 	output_screenshot = data().output_screenshot;
+	output_obj = data().output_obj;
 	anim_t = 0.0;
 	anim_f = 0;
 	rbc_data.vel = data().Vel;
@@ -917,6 +919,8 @@ namespace glfw
 		stairs.step_height = rbc_data.step_height;
 		stairs.start_height = rbc_data.start_height;
 		stairs.start_width = rbc_data.start_width;
+
+		std::cout << "stairs.start_width = " << stairs.start_width << std::endl;
 		stairs.updateMesh();
 
 		append_mesh();
@@ -967,10 +971,13 @@ namespace glfw
 	  data().number_of_stairs = rbc_data.number_of_stairs;
 	  data().step_width = rbc_data.step_width;
 	  data().step_height = rbc_data.step_height;
+	  data().start_width = rbc_data.start_width;
+	  data().start_height = rbc_data.start_height;
 	  data().constraint_weight = rbc_data.constraint_weight;
 	  data().collision_weight = rbc_data.collision_weight;
 	  data().self_collision_weight = rbc_data.self_collision_weight;
 	  data().output_screenshot = output_screenshot;
+	  data().output_obj = output_obj;
 
 	  if (!output_moving_constraints) {
 		  data().b.clear();

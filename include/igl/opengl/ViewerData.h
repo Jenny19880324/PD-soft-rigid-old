@@ -158,6 +158,7 @@ public:
   bool hinge_enabled;
   bool with_dynamics;
   bool output_screenshot;
+  bool output_obj;
   int max_iter;
   int number_of_stairs;
   RBCEnergyType energy;

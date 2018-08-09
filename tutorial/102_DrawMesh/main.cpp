@@ -678,7 +678,7 @@ bool pre_draw(igl::opengl::glfw::Viewer &viewer)
 		}
 
 		rbc_data.f_ext = Eigen::RowVector3d(0., (double)rbc_data.g, 0.).replicate(V.rows(), 1);
-		rbc_data.f_ext = rbc_data.M * rbc_data.f_ext;
+		
 		if (rbc_data.collision_enabled) {
 			
 			if (floor_enabled) {
@@ -692,10 +692,6 @@ bool pre_draw(igl::opengl::glfw::Viewer &viewer)
 			
 			if (stairs_enabled) {
 				for (int i = 0; i < U.rows(); i++) {
-					//if (U.row(i).z() < 0 &&
-					//	U.row(i).y() < 0) {
-					//	rbc_data.f_ext(i, 1) = 0. - U(i, 1);
-					//}
 
 					for (int step_i = 0; step_i < rbc_data.number_of_stairs; step_i++) {
 						if (U.row(i).z() < (step_i + 1.0) * rbc_data.step_width - stairs.start_width &&
@@ -704,21 +700,15 @@ bool pre_draw(igl::opengl::glfw::Viewer &viewer)
 							if (U.row(i).y() < -step_i * rbc_data.step_height - stairs.start_height && 
 								U.row(i).y() > -(step_i + 0.5) * rbc_data.step_height - stairs.start_height) {
 								rbc_data.f_ext(i, 1) = -step_i * rbc_data.step_height - stairs.start_height - U(i, 1);
+								rbc_data.f_ext(i, 1) *= rbc_data.collision_weight;
 							}
 							else if (U.row(i).y() < -(step_i + 0.5) * rbc_data.step_height - stairs.start_height &&
 								U.row(i).y() > -(step_i + 1.0) * rbc_data.step_height - stairs.start_height) {
 								rbc_data.f_ext(i, 2) = U(i, 2) - step_i * rbc_data.step_width + stairs.start_width;
-								rbc_data.f_ext(i, 2) *= 0.1;
+								rbc_data.f_ext(i, 2) *= rbc_data.collision_weight;
 							}
 						}
-					}
-
-					//if (U.row(i).z() > (rbc_data.number_of_stairs - 1) * rbc_data.step_width &&
-					//	U.row(i).y() < (rbc_data.number_of_stairs - 1) * rbc_data.step_height)
-					//{
-					//	rbc_data.f_ext(i, 1) = -(rbc_data.number_of_stairs - 1) * rbc_data.step_height - U(i, 1);
-					//}
-					rbc_data.f_ext(i, 1) *= rbc_data.collision_weight; 
+					}	
 				}
 			}
 		}
@@ -727,6 +717,7 @@ bool pre_draw(igl::opengl::glfw::Viewer &viewer)
 			igl::self_collision(U, T, SF, neighbors, b_set, rbc_data);
 		}
 
+		rbc_data.f_ext = rbc_data.M * rbc_data.f_ext;
 		//igl::rbc_precomputation(V, U, T, N, V.cols(), colliding_b, rbc_data);
 		// debug: add angular velocity constantly
 		if (anim_f == 0) {
@@ -1105,12 +1096,13 @@ if (ImGui::Button("clear")) {
 	  }
 
 	  if (ImGui::Checkbox("stairs", &stairs_enabled)) {
-		  rbc_data.number_of_stairs = stairs.number_of_stairs;
-		  rbc_data.step_height = stairs.step_height;
-		  rbc_data.step_width = stairs.step_width;
-		  rbc_data.start_height = stairs.start_height;
-		  rbc_data.start_width = stairs.start_width;
 		  if (stairs_enabled) {
+			  rbc_data.number_of_stairs = stairs.number_of_stairs;
+			  rbc_data.step_height = stairs.step_height;
+			  rbc_data.step_width = stairs.step_width;
+			  rbc_data.start_height = stairs.start_height;
+			  rbc_data.start_width = stairs.start_width;
+
 			  viewer.append_mesh();
 			  stairs.idx = viewer.data_list.size() - 1;
 			  viewer.data().set_mesh(stairs.V, stairs.F);
