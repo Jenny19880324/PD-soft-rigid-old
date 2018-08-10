@@ -48,6 +48,8 @@
 
 extern Eigen::MatrixXd U, V, C, P;
 extern Eigen::MatrixXi T, F, SF;
+extern Eigen::MatrixXd output_obj_TC;
+extern Eigen::MatrixXi output_obj_F, output_obj_FTC;
 extern Eigen::Matrix<double, Eigen::Dynamic, 3> bc;
 extern Eigen::VectorXi b;
 extern Eigen::VectorXi N;
@@ -848,6 +850,9 @@ namespace glfw
 	external_force_enabled = data().external_force_enabled;
 	output_screenshot = data().output_screenshot;
 	output_obj = data().output_obj;
+	output_obj_F = data().output_obj_F;
+	output_obj_FTC = data().output_obj_FTC;
+	output_obj_TC = data().output_obj_TC;
 	anim_t = 0.0;
 	anim_f = 0;
 	rbc_data.vel = data().Vel;
@@ -872,6 +877,7 @@ namespace glfw
 	rbc_data.self_collision_weight = data().self_collision_weight;
 	rbc_data.collision_enabled = data().collision_enabled;
 	rbc_data.self_collision_enabled = data().self_collision_enabled;
+
 
 	if (data().b.size() > 0) {
 		b = data().b[0];
@@ -978,6 +984,9 @@ namespace glfw
 	  data().self_collision_weight = rbc_data.self_collision_weight;
 	  data().output_screenshot = output_screenshot;
 	  data().output_obj = output_obj;
+	  data().output_obj_F = output_obj_F;
+	  data().output_obj_TC = output_obj_TC;
+	  data().output_obj_FTC = output_obj_FTC;
 
 	  if (!output_moving_constraints) {
 		  data().b.clear();

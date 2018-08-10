@@ -145,6 +145,9 @@ public:
   Eigen::MatrixXi T; // Tetrahedron of the mesh (#T x 4)
   Eigen::VectorXi N; // number of vertices in each region
   Eigen::VectorXi SV; // indices of vertices on the surface
+  Eigen::MatrixXi output_obj_F;
+  Eigen::MatrixXi output_obj_FTC;
+  Eigen::MatrixXd output_obj_TC;
   std::vector<Eigen::Matrix<double, Eigen::Dynamic, 3>> bc; // constrained vertices
   std::vector<Eigen::VectorXi> b;                           // constrained vertices index
   std::vector<std::vector<int>> I;                          // Vertex indices involved int joints
@@ -282,6 +285,9 @@ namespace igl
 	  SERIALIZE_MEMBER(N);
 	  SERIALIZE_MEMBER(b);
 	  SERIALIZE_MEMBER(bc);
+	  SERIALIZE_MEMBER(output_obj_F);
+	  SERIALIZE_MEMBER(output_obj_FTC);
+	  SERIALIZE_MEMBER(output_obj_TC);
 	  SERIALIZE_MEMBER(neighbors);
 	  SERIALIZE_MEMBER(gravity_enabled);
 	  SERIALIZE_MEMBER(collision_enabled);
