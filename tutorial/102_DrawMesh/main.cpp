@@ -70,6 +70,7 @@ Eigen::MatrixXi output_obj_FTC;
 int pressed_b;
 int anim_f = 0;
 float angular_velocity_scaling = 1.0;
+float activation = 1.0;
 double anim_t = 0.0;
 double anim_t_dir = 0.033;
 double s_grid = 0.;
@@ -1033,7 +1034,7 @@ if (ImGui::Button("clear")) {
 	  
 	  
 	  // material panel
-	  if (ImGui::Combo("Material", (int *)(&rbc_data.energy), "PD material\0\RBC\0"))
+	  if (ImGui::Combo("Material", (int *)(&rbc_data.energy), "PD material\0\RBC\0\muscle\0"))
 	  {
 		  igl::rbc_precomputation(V, T, N, V.cols(), b, rbc_data);
 	  }
@@ -1294,7 +1295,6 @@ if (ImGui::Button("clear")) {
 	  ImGui::Begin(
 		  "Output", nullptr
 	  );
-
 	  if (ImGui::Checkbox("screenshot", &output_screenshot)) {
 
 	  }
@@ -1302,6 +1302,19 @@ if (ImGui::Button("clear")) {
 
 	  }
 	  ImGui::End(); 
+
+	  // Activation panel
+	  ImGui::SetNextWindowPos(ImVec2(180.f * menu.menu_scaling(), 680), ImGuiSetCond_FirstUseEver);
+	  ImGui::SetNextWindowSize(ImVec2(200, 80), ImGuiSetCond_FirstUseEver);
+	  ImGui::Begin(
+		  "Activation", nullptr
+	  );
+	  if (ImGui::DragFloat("a", &activation, 1e-3, 1e-3, 1.0)) {
+		  igl::rbc_precomputation(V, T, N, V.cols(), b, rbc_data);
+	  }
+	  ImGui::End();
+
+	  
 
   };
 

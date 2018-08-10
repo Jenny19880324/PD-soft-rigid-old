@@ -1452,9 +1452,12 @@ template <
 	int a, b, c, d;
 	//[region]->[vertex index]
 	// region == 0 => elastic tet, flesh tet
-	// region < 0  => rigid tet, bone tet
+	// (region < 0 && region % 10 == 0) => rigid tet, bone tet (e.g. -10, -20, -30)
+	// (region > 0 && region % 10 == 0) => activation tet, muscle tet (e.g. 10, 20, 30)
 	std::map<int, std::set<int>> rigid_vertex_map;
+	std::map<int, std::set<int>> active_vertex_map;
 	std::unordered_set<int> rigid_vertex_set;
+	std::unordered_set<int> active_vertex_set;
 	int number_of_surface_tetrahedra = 0;
 	for (int i = 0; i<number_of_tetrahedra; i++)
 	{
@@ -1480,6 +1483,17 @@ template <
 			rigid_vertex_set.insert(T(i, 1));
 			rigid_vertex_set.insert(T(i, 2));
 			rigid_vertex_set.insert(T(i, 3));
+		}
+		else if (extra % 10 == 0) {
+			active_vertex_map[extra].insert(T(i, 0));
+			active_vertex_map[extra].insert(T(i, 1));
+			active_vertex_map[extra].insert(T(i, 2));
+			active_vertex_map[extra].insert(T(i, 3));
+
+			active_vertex_set.insert(T(i, 0));
+			active_vertex_set.insert(T(i, 1));
+			active_vertex_set.insert(T(i, 2));
+			active_vertex_set.insert(T(i, 3));
 		}
 	}
 	fclose(mesh_file);

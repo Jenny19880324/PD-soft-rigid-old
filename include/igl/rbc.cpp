@@ -8,10 +8,10 @@
 #include "rbc_rhs.h"
 #include "self_collision.h"
 
-
+extern float activation;
 extern Eigen::MatrixXd P;
 extern Eigen::MatrixXi SF;
-extern Eigen::VectorXi SV;
+extern Eigen::VectorXi A;
 extern std::vector<std::vector<int>> I;
 
 template<
@@ -68,7 +68,12 @@ IGL_INLINE bool igl::rbc_precomputation(
 	typedef SparseMatrix<Scalar> SparseMatrixS;
 	SparseMatrixS L;
 
-	laplacian_matrix(V, F, L);
+	if (eff_energy == RBC_ENERGY_TYPE_ACTIVE) {
+		laplacian_matrix(V, F, A, L);
+	}
+	else {
+		laplacian_matrix(V, F, L);
+	}
 	
 	rbc_rhs(V, F, data.dim, eff_energy, data.J);
 
@@ -351,9 +356,25 @@ IGL_INLINE bool igl::rbc_solve(
 
 			shape_matrix(U, data.F, data.energy, S);
 			const int nr = data.SM.rows() / 3;
+
+			// hard code Sa matrix now
+			// TODO make Sa change over time.
+
+			Matrix3d Sa;
+			Sa << 1.0, 0.0, 0.0,
+				0.0, (double)activation, 0.0,
+				0.0, 0.0, 1.0;
+			Matrix3d Sa_inv = Sa.inverse();
+			// hard code Sa matrix now
+			// TODO make Sa change over time.
+
 			for (int r = 0; r < nr; ++r) {
 				Matrix3d Dm = data.SM.block(3 * r, 0, 3, 3).transpose();
 				Matrix3d Ds = S.block(3 * r, 0, 3, 3).transpose();
+				if (data.energy == RBC_ENERGY_TYPE_ACTIVE &&
+					A(r) > 0 && A(r) % 10 == 0) {
+					Dm = Dm * Sa;
+				}
 				F.block(3 * r, 0, 3, 3) = Ds * Dm.inverse();
 			}
 			fit_rotations(F, R);

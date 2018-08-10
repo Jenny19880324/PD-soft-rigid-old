@@ -27,12 +27,13 @@ IGL_INLINE void igl::rbc_rhs(
   {
     case RBC_ENERGY_TYPE_COROT:
 	case RBC_ENERGY_TYPE_RBC:
+	case RBC_ENERGY_TYPE_ACTIVE:
       //nr = n;
       break;
     default:
       fprintf(
         stderr,
-        "arap_rhs.h: Error: Unsupported rbc energy %d\n",
+        "rbc_rhs.h: Error: Unsupported rbc energy %d\n",
         energy);
       return;
   }
