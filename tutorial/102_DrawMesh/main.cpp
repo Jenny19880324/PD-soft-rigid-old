@@ -30,6 +30,7 @@
 #include <igl/writeOBJ.h>
 #include <igl/self_collision.h>
 #include <igl/spatial_hash.h>
+#include <igl/lqr.h>
 
 
 bool vertex_pick_enabled = false;
@@ -44,6 +45,10 @@ bool gravity_enabled = false;
 bool output_moving_constraints = false;
 bool output_screenshot = false;
 bool output_obj = false;
+bool lqr_mode_enabled = false;
+bool lqr_play = false;
+bool lqr_init_state_picked = false;
+bool lqr_target_state_picked = false;
 
 Eigen::VectorXi temp_b;
 Eigen::MatrixXd temp_U;
@@ -156,6 +161,15 @@ struct igl::Stairs stairs;
 
 Eigen::Quaternionf trackball_angle = Eigen::Quaternionf::Identity();
 Eigen::Quaternionf down_rotation = Eigen::Quaternionf::Identity();
+
+
+
+// temp global variable for LQR experiment
+Eigen::Matrix<double, 6, 1> x_init;
+Eigen::Matrix<double, 6, 1> x_target;
+std::vector < Eigen::Matrix<double, 6, 1>> x_sol;
+int horizon = 20;
+
 
 
 template <typename DerivedV, typename DerivedT>
@@ -660,7 +674,20 @@ bool pre_draw(igl::opengl::glfw::Viewer &viewer)
 	using namespace Eigen;
 	using namespace std;
 
-	if (viewer.core.is_animating)
+	if (lqr_mode_enabled && lqr_play) {
+		if (anim_f < horizon) {
+			viewer.data().move_points(Eigen::RowVector3d(
+				x_sol[anim_f].x(),
+				x_sol[anim_f].y(),
+				x_sol[anim_f].z()),
+				Eigen::RowVector3d(1.0, (double)anim_f / (double)horizon, 0.0));
+		}
+		else {
+			lqr_play = false;
+			anim_f = 0;
+		}
+	}
+	else if (viewer.core.is_animating)
 	{
 		if (viewer.data().bc.size() > 1 && 
 			anim_f < viewer.data().bc.size()) {
@@ -794,8 +821,24 @@ bool key_down(igl::opengl::glfw::Viewer &viewer, unsigned char key, int mods)
 	switch (key)
 	{
 	case ' ':
-		viewer.core.is_animating = !viewer.core.is_animating;
+		if (lqr_mode_enabled) {
+			if (!lqr_play) {
+				lqr_play = true;
+			}
+			anim_f++;
+		}
+		else {
+			viewer.core.is_animating = !viewer.core.is_animating;
+			return true;
+		}
+	case 'L':
+	case 'l':
+	{
+		if (lqr_mode_enabled) {
+			igl::lqr(horizon, 0.033, x_init, x_target, x_sol);
+		}
 		return true;
+	}
 	case 'H':
 	case 'h':
 		if ((temp_b.rows() > 0) && (temp_bc.rows() > 0)) {
@@ -1222,43 +1265,43 @@ if (ImGui::Button("clear")) {
 			  {
 				  // U shape movement
 				  //double alpha = M_PI / 2 * (double)i / (double)number_of_frames;
-				  //double beta = M_PI * (double)i / (double)number_of_frames;
-				  //t.x() = 2. * (cos(alpha) - 1.);
-				  //t.y() = 2. * sin(alpha);
-				  //t.z() = 0.;
+//double beta = M_PI * (double)i / (double)number_of_frames;
+//t.x() = 2. * (cos(alpha) - 1.);
+//t.y() = 2. * sin(alpha);
+//t.z() = 0.;
 
-				  //R = igl::rotation_matrix_from_axis_and_angle(
-					 // Eigen::Vector3d(0., 0., 1.),
-					 // beta);
-				  //Eigen::MatrixXd bc_ith_frame(temp_bc.rows(), temp_bc.cols());
-				  //for (int j = 0; j < temp_bc.rows(); j++) {
-					 // Eigen::RowVector3d delta = temp_bc.row(j) - cm;
-					 // bc_ith_frame.row(j) = delta * R.transpose() + cm + t;
-				  //}
-				  // U shape movement
+//R = igl::rotation_matrix_from_axis_and_angle(
+   // Eigen::Vector3d(0., 0., 1.),
+   // beta);
+//Eigen::MatrixXd bc_ith_frame(temp_bc.rows(), temp_bc.cols());
+//for (int j = 0; j < temp_bc.rows(); j++) {
+   // Eigen::RowVector3d delta = temp_bc.row(j) - cm;
+   // bc_ith_frame.row(j) = delta * R.transpose() + cm + t;
+//}
+// U shape movement
 
-				  // updown shake movement
-				  double alpha = M_PI * 16 * (double)i / (double)number_of_frames;
-				  t.x() = 0.5 * sin(alpha);
-				  t.y() = 0.;
-				  t.z() = 0.;
-				  Eigen::MatrixXd bc_ith_frame(temp_bc.rows(), temp_bc.cols());
-				  for (int j = 0; j < temp_bc.rows(); j++) {
-					  bc_ith_frame.row(j) = temp_bc.row(j) + t;
-				  }
-				  // updown shake movement
+// updown shake movement
+double alpha = M_PI * 16 * (double)i / (double)number_of_frames;
+t.x() = 0.5 * sin(alpha);
+t.y() = 0.;
+t.z() = 0.;
+Eigen::MatrixXd bc_ith_frame(temp_bc.rows(), temp_bc.cols());
+for (int j = 0; j < temp_bc.rows(); j++) {
+	bc_ith_frame.row(j) = temp_bc.row(j) + t;
+}
+// updown shake movement
 
-				  viewer.data().b.push_back(temp_b);
-				  viewer.data().bc.push_back(bc_ith_frame);
+viewer.data().b.push_back(temp_b);
+viewer.data().bc.push_back(bc_ith_frame);
 			  }
 
 
 			  Eigen::VectorXi b_first_frame = viewer.data().b[0];
 			  Eigen::MatrixX3d bc_first_frame = viewer.data().bc[0];
-			 /* Eigen::VectorXi b_first_frame = temp_b;
-			  Eigen::MatrixX3d bc_first_frame = temp_bc + Eigen::RowVector3d(6., 0., 0).replicate(temp_bc.rows(), 1);
-			  viewer.data().b.push_back(temp_b);
-			  viewer.data().bc.push_back(bc_first_frame);*/
+			  /* Eigen::VectorXi b_first_frame = temp_b;
+			   Eigen::MatrixX3d bc_first_frame = temp_bc + Eigen::RowVector3d(6., 0., 0).replicate(temp_bc.rows(), 1);
+			   viewer.data().b.push_back(temp_b);
+			   viewer.data().bc.push_back(bc_first_frame);*/
 
 			  Eigen::VectorXi fixed_b = b;
 			  Eigen::MatrixX3d fixed_bc = bc;
@@ -1301,7 +1344,7 @@ if (ImGui::Button("clear")) {
 	  if (ImGui::Checkbox("obj", &output_obj)) {
 
 	  }
-	  ImGui::End(); 
+	  ImGui::End();
 
 	  // Activation panel
 	  ImGui::SetNextWindowPos(ImVec2(180.f * menu.menu_scaling(), 680), ImGuiSetCond_FirstUseEver);
@@ -1311,6 +1354,17 @@ if (ImGui::Button("clear")) {
 	  );
 	  if (ImGui::DragFloat("a", &activation, 1e-3, 1e-3, 1.0)) {
 		  igl::rbc_precomputation(V, T, N, V.cols(), b, rbc_data);
+	  }
+	  ImGui::End();
+
+	  // LQR panel
+	  ImGui::SetNextWindowPos(ImVec2(380.f * menu.menu_scaling(), 0), ImGuiSetCond_FirstUseEver);
+	  ImGui::SetNextWindowSize(ImVec2(100, 80), ImGuiCond_FirstUseEver);
+	  ImGui::Begin(
+		  "LQR", nullptr
+	  );
+
+	  if (ImGui::Checkbox("enable", &lqr_mode_enabled)) {
 	  }
 	  ImGui::End();
 
@@ -1434,6 +1488,58 @@ if (ImGui::Button("clear")) {
 		  marquee.from_x = viewer.current_mouse_x;
 		  marquee.from_y = viewer.current_mouse_y;
 		  return true;
+	  }
+
+	  if (lqr_mode_enabled) {
+		  if (!lqr_init_state_picked) {
+
+			  int vid = -1;
+			  // Cast a ray in the view direction starting from the mouse position
+			  double x = viewer.current_mouse_x;
+			  double y = viewer.core.viewport(3) - viewer.current_mouse_y;
+			  if (igl::unproject_onto_mesh(
+				  Eigen::Vector2f(x, y),
+				  viewer.core.view * viewer.core.model,
+				  viewer.core.proj,
+				  viewer.core.viewport,
+				  U, F, vid)) {
+				  viewer.data().add_points(U.row(vid), Eigen::RowVector3d(1., 0., 0.));
+			  }
+			  if (vid < 0) {
+				  return false;
+			  }
+
+			  x_init << U.row(vid).x(), U.row(vid).y(), U.row(vid).z(), 0, 0, 0;
+			  std::cout << "x_init = " << x_init.transpose() << std::endl;
+			  lqr_init_state_picked = true;
+		  }
+		  else if (!lqr_target_state_picked) {
+			  int vid = -1;
+			  // Cast a ray in the view direction starting from the mouse position
+			  double x = viewer.current_mouse_x;
+			  double y = viewer.core.viewport(3) - viewer.current_mouse_y;
+			  if (igl::unproject_onto_mesh(
+				  Eigen::Vector2f(x, y),
+				  viewer.core.view * viewer.core.model,
+				  viewer.core.proj,
+				  viewer.core.viewport,
+				  U, F, vid)) {
+				  viewer.data().add_points(U.row(vid), Eigen::RowVector3d(1., 1., 0.));
+			  }
+			  if (vid < 0) {
+				  return false;
+			  }
+
+			  x_target << U.row(vid).x(), U.row(vid).y(), U.row(vid).z(), 0, 0, 0;
+
+			  std::cout << "x_target = " << x_target.transpose() << std::endl;
+			  lqr_target_state_picked = true;
+		  }
+		  else {
+			  lqr_init_state_picked = false;
+			  lqr_target_state_picked = false;
+		  }
+
 	  }
 	  return false;
   };

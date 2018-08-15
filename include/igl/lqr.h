@@ -6,10 +6,17 @@
 
 namespace igl
 {	
-	template <typename DerivedV>
+	// targets key: frame -> val : 3d coordinate
+	// frame starts from 0.
+	template <
+		typename DerivedX,
+		typename Scalar>
 	IGL_INLINE void lqr(
-		const std::map<int, DerivedV> &x_,
-		std::vector<DerivedV> &x);
+		int N,
+		Scalar dt,
+		const DerivedX & x_init,
+		const DerivedX & x_target,
+		std::vector<DerivedX> &x_sol);
 }
 
 #ifndef IGL_STATIC_LIBRARY

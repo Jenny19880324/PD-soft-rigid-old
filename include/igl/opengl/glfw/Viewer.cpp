@@ -926,7 +926,6 @@ namespace glfw
 		stairs.start_height = rbc_data.start_height;
 		stairs.start_width = rbc_data.start_width;
 
-		std::cout << "stairs.start_width = " << stairs.start_width << std::endl;
 		stairs.updateMesh();
 
 		append_mesh();
