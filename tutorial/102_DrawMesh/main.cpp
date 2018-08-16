@@ -38,7 +38,7 @@ bool vertices_marquee_enabled = false;
 bool vertices_marquee_deselect_enabled = false;
 bool vertices_move_enabled = false;
 bool vertices_rotate_enabled = false;
-bool external_force_enabled = false;
+bool external_force_enabled = false;r
 bool floor_enabled = false;
 bool stairs_enabled = false;
 bool gravity_enabled = false;
@@ -49,6 +49,7 @@ bool lqr_mode_enabled = false;
 bool lqr_play = false;
 bool lqr_init_state_picked = false;
 bool lqr_target_state_picked = false;
+bool lqr_pick_enabled = false;
 
 Eigen::VectorXi temp_b;
 Eigen::MatrixXd temp_U;
@@ -168,7 +169,9 @@ Eigen::Quaternionf down_rotation = Eigen::Quaternionf::Identity();
 Eigen::Matrix<double, 6, 1> x_init;
 Eigen::Matrix<double, 6, 1> x_target;
 std::vector < Eigen::Matrix<double, 6, 1>> x_sol;
-int horizon = 20;
+int horizon = 100;
+float rho = 1e-4;
+std::map<int, Eigen::Matrix<double, 6, 1>> x_targets;
 
 
 
@@ -674,20 +677,8 @@ bool pre_draw(igl::opengl::glfw::Viewer &viewer)
 	using namespace Eigen;
 	using namespace std;
 
-	if (lqr_mode_enabled && lqr_play) {
-		if (anim_f < horizon) {
-			viewer.data().move_points(Eigen::RowVector3d(
-				x_sol[anim_f].x(),
-				x_sol[anim_f].y(),
-				x_sol[anim_f].z()),
-				Eigen::RowVector3d(1.0, (double)anim_f / (double)horizon, 0.0));
-		}
-		else {
-			lqr_play = false;
-			anim_f = 0;
-		}
-	}
-	else if (viewer.core.is_animating)
+
+	if (viewer.core.is_animating)
 	{
 		if (viewer.data().bc.size() > 1 && 
 			anim_f < viewer.data().bc.size()) {
@@ -824,21 +815,48 @@ bool key_down(igl::opengl::glfw::Viewer &viewer, unsigned char key, int mods)
 		if (lqr_mode_enabled) {
 			if (!lqr_play) {
 				lqr_play = true;
+				anim_f = 0;
+				viewer.data().add_points(Eigen::RowVector3d(
+					x_sol[anim_f].x(),
+					x_sol[anim_f].y(),
+					x_sol[anim_f].z()),
+					Eigen::RowVector3d(1.0, 1.0, 0.0));
+				anim_f++;
 			}
-			anim_f++;
+			else {
+				if (anim_f < horizon) {
+					std::cout << "x_sol[" << anim_f << "]=" << x_sol[anim_f] << std::endl;
+						viewer.data().move_points(Eigen::RowVector3d(
+							x_sol[anim_f].x(),
+							x_sol[anim_f].y(),
+							x_sol[anim_f].z()),
+							Eigen::RowVector3d(1.0, 1.0, 0.0));
+						anim_f++;
+				}
+				else {
+					viewer.data().remove_points(Eigen::RowVector3d(
+						x_sol[anim_f - 1].x(),
+						x_sol[anim_f - 1].y(),
+						x_sol[anim_f - 1].z()));
+
+					lqr_play = false;
+					anim_f = 0;
+					
+				}
+			}
 		}
 		else {
 			viewer.core.is_animating = !viewer.core.is_animating;
 			return true;
 		}
-	case 'L':
-	case 'l':
-	{
-		if (lqr_mode_enabled) {
-			igl::lqr(horizon, 0.033, x_init, x_target, x_sol);
-		}
-		return true;
-	}
+	//case 'L':
+	//case 'l':
+	//{
+	//	if (lqr_mode_enabled) {
+	//		igl::lqr(horizon, 0.033, (double)rho, x_init, x_target, x_sol);
+	//	}
+	//	return true;
+	//}
 	case 'H':
 	case 'h':
 		if ((temp_b.rows() > 0) && (temp_bc.rows() > 0)) {
@@ -1049,27 +1067,32 @@ if (ImGui::Button("clear")) {
 	  );
 
 	  if (ImGui::Button("reset")) {
-		  U = V;
-		  viewer.data().set_mesh(U, F);
-		  viewer.data().compute_normals();
-
-		  if (viewer.data().bc.size() > 0) {
-			  b = viewer.data().b[0];
-			  bc = viewer.data().bc[0];
+		  if (lqr_mode_enabled) {
+			  anim_f = 0;
 		  }
-		  viewer.data().set_points(bc, Eigen::RowVector3d(0., 1., 0.));
-		  //viewer.data().remove_points(bc);
-		  //viewer.data().b.clear();
-		  //viewer.data().bc.clear();
-		  //b.resize(0, Eigen::NoChange);
-		  //bc.resize(0, Eigen::NoChange);
-		  //temp_b.resize(0, Eigen::NoChange);
-		  //temp_bc.resize(0, Eigen::NoChange);
-		  anim_f = 0;
-		  anim_t = 0.;
+		  else {
+			  U = V;
+			  viewer.data().set_mesh(U, F);
+			  viewer.data().compute_normals();
 
-		  rbc_data.vel.setZero();
-		  igl::rbc_precomputation(V, T, N, V.cols(), b, rbc_data);
+			  if (viewer.data().bc.size() > 0) {
+				  b = viewer.data().b[0];
+				  bc = viewer.data().bc[0];
+			  }
+			  viewer.data().set_points(bc, Eigen::RowVector3d(0., 1., 0.));
+			  //viewer.data().remove_points(bc);
+			  //viewer.data().b.clear();
+			  //viewer.data().bc.clear();
+			  //b.resize(0, Eigen::NoChange);
+			  //bc.resize(0, Eigen::NoChange);
+			  //temp_b.resize(0, Eigen::NoChange);
+			  //temp_bc.resize(0, Eigen::NoChange);
+			  anim_f = 0;
+			  anim_t = 0.;
+
+			  rbc_data.vel.setZero();
+			  igl::rbc_precomputation(V, T, N, V.cols(), b, rbc_data);
+		  }
 	  }
 
 	  ImGui::SameLine();
@@ -1359,17 +1382,77 @@ viewer.data().bc.push_back(bc_ith_frame);
 
 	  // LQR panel
 	  ImGui::SetNextWindowPos(ImVec2(380.f * menu.menu_scaling(), 0), ImGuiSetCond_FirstUseEver);
-	  ImGui::SetNextWindowSize(ImVec2(100, 80), ImGuiCond_FirstUseEver);
+	  ImGui::SetNextWindowSize(ImVec2(200, 180), ImGuiCond_FirstUseEver);
 	  ImGui::Begin(
 		  "LQR", nullptr
 	  );
 
 	  if (ImGui::Checkbox("enable", &lqr_mode_enabled)) {
 	  }
+
+	  if (ImGui::Checkbox("pick enabled", &lqr_pick_enabled)) {
+
+	  }
+
+	  float w = ImGui::GetContentRegionAvailWidth();
+	  float p = ImGui::GetStyle().FramePadding.x;
+	  if (ImGui::Button("Load##Targets", ImVec2((w - p) / 2.f, 0)))
+	  {
+		  viewer.data().clear();
+
+		  x_init << 0.0, 0.0, 0.0, -10.0, 0.0, 0.0;
+
+		  int horizon_1 = 20;
+		  Eigen::Matrix<double, 6, 1> x_target_1;
+		  x_target_1 << 2.0, 1.0, -1.0, 0.0, 0.0, 0.0;
+
+		  int horizon_2 = 50;
+		  Eigen::Matrix<double, 6, 1> x_target_2;
+		  x_target_2 << 2.0, 3.0, 0.0, 0.0, 0.0, 0.0;
+
+		  horizon = horizon_1 + horizon_2;
+
+		  x_targets[horizon_1] = x_target_1;
+		  x_targets[horizon_2] = x_target_2;
+
+		  viewer.data().add_points(Eigen::RowVector3d(
+			  x_init.x(),
+			  x_init.y(),
+			  x_init.z()),
+			  Eigen::RowVector3d(1.0, 0.0, 0.0));
+
+		  for (auto it = x_targets.begin(); it != x_targets.end(); it++) {
+			  viewer.data().add_points(Eigen::RowVector3d(
+				  it->second.x(),
+				  it->second.y(),
+				  it->second.z()
+			  ),
+			 Eigen::RowVector3d(1.0, 0.0, 0.0));
+		  }
+	  }
+	  ImGui::SameLine(0, p);
+	  if (ImGui::Button("Solve", ImVec2((w - p) / 2.f, 0)))
+	  {
+		  x_sol.clear();
+		  Eigen::Matrix<double, 6, 1> x_init_i = x_init;
+		  for (auto it = x_targets.begin(); it != x_targets.end(); it++) {
+			  std::vector<Eigen::Matrix<double, 6, 1>> x_sol_i;
+			  Eigen::Matrix<double, 6, 1> x_target_i = it->second;
+			  int horizon_i = it->first;
+			  igl::lqr(horizon_i, 0.033, (double)rho, x_init_i, x_target_i, x_sol_i);
+			  x_init_i = x_target_i;
+			  x_sol.insert(x_sol.end(), x_sol_i.begin(), x_sol_i.end());
+		  }
+
+		  for (int i = 0; i < x_sol.size(); i++) {
+			  std::cout << "x_sol[" << i << "]=" << x_sol[i].transpose() << std::endl;
+		  }
+	  }
+	  if (ImGui::DragFloat("rho", &rho, 0.01, 1e-8, 1.0)) {
+
+	  }
+
 	  ImGui::End();
-
-	  
-
   };
 
   // Register callbacks
@@ -1490,7 +1573,7 @@ viewer.data().bc.push_back(bc_ith_frame);
 		  return true;
 	  }
 
-	  if (lqr_mode_enabled) {
+	  if (lqr_mode_enabled && lqr_pick_enabled) {
 		  if (!lqr_init_state_picked) {
 
 			  int vid = -1;
@@ -1509,7 +1592,7 @@ viewer.data().bc.push_back(bc_ith_frame);
 				  return false;
 			  }
 
-			  x_init << U.row(vid).x(), U.row(vid).y(), U.row(vid).z(), 0, 0, 0;
+			  x_init << U.row(vid).x(), U.row(vid).y(), U.row(vid).z(), -10, 0, 0;
 			  std::cout << "x_init = " << x_init.transpose() << std::endl;
 			  lqr_init_state_picked = true;
 		  }

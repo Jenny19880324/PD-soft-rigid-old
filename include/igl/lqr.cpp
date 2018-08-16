@@ -8,6 +8,7 @@ template <
 IGL_INLINE void igl::lqr(
 	int N,
 	Scalar dt,
+	Scalar rho,
 	const DerivedX &x_init,
 	const DerivedX &x_target,
 	std::vector<DerivedX> &x_sol)
@@ -42,8 +43,6 @@ IGL_INLINE void igl::lqr(
 	Eigen::MatrixXd Q, Qf, R;
 	Qf = C.transpose() * C;
 
-	Scalar rho = 0.1;
-
 	R = rho * Eigen::MatrixXd::Identity(3, 3);
 
 	// follow Summary of LQR solution via DP
@@ -76,6 +75,6 @@ IGL_INLINE void igl::lqr(
 
 #ifdef IGL_STATIC_LIBRARY
 // Explicit template instantiation
-template void igl::lqr<Eigen::Matrix<double, 6, 1, 0, 6, 1>, double>(int, double, Eigen::Matrix<double, 6, 1, 0, 6, 1> const &, Eigen::Matrix<double, 6, 1, 0, 6, 1> const &, std::vector<Eigen::Matrix<double, 6, 1, 0, 6, 1>, std::allocator<Eigen::Matrix<double, 6, 1, 0, 6, 1> > > &);
+template void igl::lqr<Eigen::Matrix<double, 6, 1, 0, 6, 1>, double>(int, double, double, Eigen::Matrix<double, 6, 1, 0, 6, 1> const &, Eigen::Matrix<double, 6, 1, 0, 6, 1> const &, std::vector<Eigen::Matrix<double, 6, 1, 0, 6, 1>, std::allocator<Eigen::Matrix<double, 6, 1, 0, 6, 1> > > &);
 
 #endif

@@ -14,6 +14,7 @@ namespace igl
 	IGL_INLINE void lqr(
 		int N,
 		Scalar dt,
+		Scalar rho,
 		const DerivedX & x_init,
 		const DerivedX & x_target,
 		std::vector<DerivedX> &x_sol);
